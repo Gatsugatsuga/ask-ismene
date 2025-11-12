@@ -1,0 +1,15 @@
+.env
+.env.*
+node_modules/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+solidity/artifacts/
+solidity/cache/
+solidity/coverage/
+solidity/coverage.json
+solidity/ignition/deployments/
+solidity/typechain/
+
+.DS_Store
