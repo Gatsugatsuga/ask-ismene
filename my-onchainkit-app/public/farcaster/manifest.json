@@ -1,0 +1,9 @@
+{
+  "name": "Ask Ismène",
+  "iconUrl": "https://ask-ismene.vercel.app/icon.png",
+  "homeUrl": "https://ask-ismene.vercel.app",
+  "description": "Ask me a question, ask me for magic.",
+  "versions": {
+    "v1": {}
+  }
+}
