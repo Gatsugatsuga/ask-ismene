@@ -8,9 +8,9 @@ import {
   useWriteContract,
   useWaitForTransactionReceipt,
 } from "wagmi";
-import type { Abi } from "viem";
-import { useProfile } from "@farcaster/auth-kit";
-// NOTE: removed static import of sdk here
+import { encodeFunctionData, type Abi } from "viem";
+import { useProfile, SignInButton } from "@farcaster/auth-kit";
+import { sdk } from "@farcaster/miniapp-sdk";
 
 import { abi as askIsmeneBoothAbi } from "@/lib/abi/askIsmene";
 
@@ -223,35 +223,45 @@ function formatCardStyle(active: boolean): CSSProperties {
 export default function Page() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-  const { profile } = useProfile();
+  const { isAuthenticated, profile } = useProfile();
 
-  // Robust Farcaster Mini App ready() handling
+  // DEBUG: Farcaster SDK status
+  const [sdkDebug, setSdkDebug] = useState<string>("init");
+
+  // Farcaster Mini App ready() handling + visible debug
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // Basic detection: only run in an iframe with Farcaster as parent/referrer
-    const isEmbedded = window.parent && window.parent !== window;
-    const fromFarcaster =
-      document.referrer.includes("farcaster.xyz") ||
-      window.location.search.includes("miniapp=1");
-
-    if (!isEmbedded || !fromFarcaster) return;
+    setSdkDebug("effect mounted (mini app)");
 
     let cancelled = false;
 
     (async () => {
       try {
-        const { sdk } = await import("@farcaster/miniapp-sdk");
-        if (cancelled) return;
+        setSdkDebug("calling sdk.actions.ready()...");
         await sdk.actions.ready();
-        console.log("Farcaster Mini App ready() called");
-      } catch (err) {
-        console.error("Failed to call sdk.actions.ready()", err);
+        if (cancelled) {
+          setSdkDebug("cancelled after ready()");
+          return;
+        }
+        setSdkDebug("ready() called successfully");
+        console.log("[Ismene] sdk.actions.ready() called (mini app)");
+      } catch (err: unknown) {
+        const msg =
+          err instanceof Error && typeof err.message === "string"
+            ? err.message
+            : String(err);
+        setSdkDebug("error: " + msg);
+        console.error(
+          "[Ismene] Failed to call sdk.actions.ready() (mini app)",
+          err
+        );
       }
     })();
 
     return () => {
       cancelled = true;
+      setSdkDebug("cleanup (unmounted)");
     };
   }, []);
 
@@ -355,6 +365,23 @@ export default function Page() {
     setStep("form");
   }
 
+  // NEW: helper to get Farcaster wallet provider (if available)
+  async function getFarcasterWalletProvider(): Promise<any | null> {
+    try {
+      // sdk or wallet may not exist outside a Mini App context
+      // @ts-expect-error: sdk.wallet type is not fully declared
+      if (!sdk || !sdk.wallet || typeof sdk.wallet.getEthereumProvider !== "function") {
+        return null;
+      }
+      // @ts-expect-error: getEthereumProvider is provided by the Mini App runtime
+      const provider = await sdk.wallet.getEthereumProvider();
+      return provider ?? null;
+    } catch (error) {
+      console.error("Error getting Farcaster wallet provider:", error);
+      return null;
+    }
+  }
+
   async function handleSubmit() {
     setErrorMsg(null);
 
@@ -428,6 +455,75 @@ export default function Page() {
             }] ${trimmedQuestion}`
           : trimmedQuestion;
 
+      // Try to use the Farcaster wallet first (Mini App context)
+      const farcasterProvider = await getFarcasterWalletProvider();
+
+      if (farcasterProvider) {
+        // Request accounts from the Farcaster wallet
+        const accounts = (await farcasterProvider.request({
+          method: "eth_requestAccounts",
+          params: [],
+        })) as string[];
+
+        const from = accounts?.[0];
+
+        if (!from) {
+          throw new Error("Could not access Farcaster wallet address.");
+        }
+
+        // 1) Approve USDC spend for the booth contract
+        const approveData = encodeFunctionData({
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [CONTRACT_ADDRESS as `0x${string}`, price],
+        });
+
+        const approveHash = await farcasterProvider.request({
+          method: "eth_sendTransaction",
+          params: [
+            {
+              from,
+              to: usdcAddress as `0x${string}`,
+              data: approveData,
+              value: "0x0",
+            },
+          ],
+        });
+
+        if (!approveHash) {
+          throw new Error("USDC approval transaction not created");
+        }
+
+        // 2) Call ask(question, formatId)
+        const askData = encodeFunctionData({
+          abi: askIsmeneBoothAbi as Abi,
+          functionName: "ask",
+          args: [questionWithFarcaster, formatId],
+        });
+
+        const askHash = await farcasterProvider.request({
+          method: "eth_sendTransaction",
+          params: [
+            {
+              from,
+              to: CONTRACT_ADDRESS as `0x${string}`,
+              data: askData,
+              value: "0x0",
+            },
+          ],
+        });
+
+        if (!askHash) {
+          throw new Error("Ask transaction not created");
+        }
+
+        // In the Farcaster path we don't have wagmi's txHash/receipt,
+        // so we move directly to success after both txs are sent.
+        setStep("success");
+        return;
+      }
+
+      // Fallback: use the connected EVM wallet via wagmi (existing flow)
       // 1) Approve USDC spend for the booth contract
       const approveHash = await writeContractAsync({
         address: usdcAddress as `0x${string}`,
@@ -467,6 +563,21 @@ export default function Page() {
     <>
       <main style={pageStyle}>
         <div style={shellStyle}>
+          {/* DEBUG: show Farcaster SDK status */}
+          <div
+            style={{
+              fontSize: 11,
+              padding: "4px 8px",
+              borderRadius: 999,
+              alignSelf: "flex-end",
+              marginBottom: 4,
+              background: "#F3F4F6",
+              color: "#4B5563",
+            }}
+          >
+            SDK: {sdkDebug}
+          </div>
+
           {/* ENVIRONMENT LABEL */}
           <div style={smallCardStyle} className="fade-in-soft">
             <div style={pillRowStyle}>
@@ -901,6 +1012,87 @@ Is this creative block or am I avoiding something?`}
                       share sensitive personal data, and you understand these
                       are artworks, not professional advice.
                     </p>
+                  </div>
+
+                  {/* Farcaster connection block (B3B) */}
+                  <div
+                    style={{
+                      marginTop: 16,
+                      paddingTop: 10,
+                      borderTop: "1px dashed #E5E7EB",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 13,
+                        color: "#374151",
+                        marginBottom: 8,
+                      }}
+                    >
+                      Farcaster connection
+                    </div>
+
+                    {isAuthenticated && profile ? (
+                      <div
+                        style={{
+                          fontSize: 12,
+                          color: "#4b5563",
+                          padding: "6px 10px",
+                          borderRadius: 999,
+                          background: "#F3F4F6",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: "50%",
+                            background: "#16a34a",
+                          }}
+                        />
+                        <span>
+                          Connected as{" "}
+                          {profile.username
+                            ? `@${profile.username}`
+                            : "Farcaster user"}
+                          {typeof profile.fid === "number"
+                            ? ` (fid: ${profile.fid})`
+                            : ""}
+                        </span>
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 6,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: 12,
+                            color: "#6b7280",
+                          }}
+                        >
+                          Connect with Farcaster so I can DM you your piece when
+                          it&apos;s minted.
+                        </span>
+                        <div>
+                          <SignInButton
+                            onSuccess={({ fid, username }) => {
+                              console.log(
+                                "[Ismene] Farcaster sign-in success:",
+                                username,
+                                fid
+                              );
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Error */}
