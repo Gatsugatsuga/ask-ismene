@@ -1,5 +1,7 @@
 "use client";
 
+import React, { useEffect, useState, type CSSProperties } from "react";
+
 import {
   useAccount,
   useChainId,
