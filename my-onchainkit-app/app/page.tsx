@@ -11,7 +11,7 @@ import {
 } from "wagmi";
 import type { Abi } from "viem";
 import { useProfile } from "@farcaster/auth-kit";
-import { sdk } from "@farcaster/miniapp-sdk";
+import { sdk, type MiniAppSDK } from "@farcaster/miniapp-sdk";
 
 import { abi as askIsmeneBoothAbi } from "@/lib/abi/askIsmene";
 
@@ -291,10 +291,10 @@ export default function Page() {
     }
   }
 
-      useEffect(() => {
+       useEffect(() => {
     try {
-      // Farcaster Mini App SDK: mark content as ready
-      (sdk as any).actions?.ready?.();
+      const miniSdk = sdk as MiniAppSDK;
+      miniSdk.actions?.ready?.();
     } catch (err) {
       // In case we're not inside a Farcaster mini app, avoid crashing
       console.error("Farcaster miniapp sdk.ready() failed", err);
