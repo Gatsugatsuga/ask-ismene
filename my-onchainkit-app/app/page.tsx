@@ -291,9 +291,10 @@ export default function Page() {
     }
   }
 
-    useEffect(() => {
+      useEffect(() => {
     try {
-      sdk.ready();
+      // Farcaster Mini App SDK: mark content as ready
+      (sdk as any).actions?.ready?.();
     } catch (err) {
       // In case we're not inside a Farcaster mini app, avoid crashing
       console.error("Farcaster miniapp sdk.ready() failed", err);
