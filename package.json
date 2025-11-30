@@ -474,8 +474,5 @@
     "yn": "^3.1.1",
     "yocto-queue": "^0.1.0"
   },
-  "type": "commonjs",
-  "overrides": {
-    "string-width-cjs": "npm:string-width@^4.2.0"
-  }
+  "type": "commonjs"
 }
