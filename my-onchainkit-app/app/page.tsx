@@ -129,7 +129,7 @@ function getPriceDetail(
 }
 
 export default function Page() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected: _isConnected } = useAccount();
   const chainId = useChainId();
 
   const { isAuthenticated, profile } = useProfile();
@@ -143,7 +143,7 @@ export default function Page() {
   const [sdkDebug, setSdkDebug] = useState<string | null>(null);
 
   const {
-    data: writeHash,
+    data: _writeHash,
     writeContractAsync,
     isPending,
   } = useWriteContract();
@@ -385,7 +385,7 @@ export default function Page() {
     }
   }
 
-  const currentPriceLabel = format
+  const _currentPriceLabel = format
     ? getPriceLabel(format, priceHaiku, priceVisual, priceOmakase)
     : "—";
 
@@ -520,7 +520,7 @@ export default function Page() {
                     sharp, sometimes a little brutal, always kind.
                   </div>
                   <div style={formatFootnote}>
-                    {/* eslint-disable-next-line react/no-unescaped-entities */}
+                    
                     For when you want language more than image.
                   </div>
                 </button>
@@ -544,7 +544,7 @@ export default function Page() {
                     glitches, soft chaos. Something you can come back to.
                   </div>
                   <div style={formatFootnote}>
-                    {/* eslint-disable-next-line react/no-unescaped-entities */}
+                    
                     For when words feel too sharp and you&apos;d rather look.
                   </div>
                 </button>
@@ -568,7 +568,7 @@ export default function Page() {
                     care of the container.
                   </div>
                   <div style={formatFootnote}>
-                    {/* eslint-disable-next-line react/no-unescaped-entities */}
+                    
                     For when you don&apos;t know what you need yet.
                   </div>
                 </button>
