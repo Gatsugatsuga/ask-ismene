@@ -11,7 +11,7 @@ import {
 } from "wagmi";
 import type { Abi } from "viem";
 import { useProfile } from "@farcaster/auth-kit";
-import { sdk, type MiniAppSDK } from "@farcaster/miniapp-sdk";
+import { sdk } from "@farcaster/miniapp-sdk";
 
 import { abi as askIsmeneBoothAbi } from "@/lib/abi/askIsmene";
 
@@ -45,6 +45,12 @@ const erc20Abi: Abi = [
     outputs: [{ name: "success", type: "bool", internalType: "bool" }],
   },
 ];
+
+type MiniAppSdkLike = {
+  actions?: {
+    ready?: () => void;
+  };
+};
 
 function getChainLabel(chainId: number | undefined) {
   if (!chainId) return "Unknown chain";
@@ -291,9 +297,9 @@ export default function Page() {
     }
   }
 
-       useEffect(() => {
+         useEffect(() => {
     try {
-      const miniSdk = sdk as MiniAppSDK;
+      const miniSdk = sdk as unknown as MiniAppSdkLike;
       miniSdk.actions?.ready?.();
     } catch (err) {
       // In case we're not inside a Farcaster mini app, avoid crashing
