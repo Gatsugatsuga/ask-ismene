@@ -1,6 +1,5 @@
 "use client";
 
-import React, { useEffect, useState, CSSProperties } from "react";
 import {
   useAccount,
   useChainId,
@@ -10,6 +9,7 @@ import {
 } from "wagmi";
 import type { Abi } from "viem";
 import { useProfile } from "@farcaster/auth-kit";
+import { sdk } from "@farcaster/miniapp-sdk";
 
 import { abi as askIsmeneBoothAbi } from "@/lib/abi/askIsmene";
 
@@ -231,6 +231,7 @@ export default function Page() {
   const [noAI, setNoAI] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
+
   // NEW: booth paused state from /api/booth-status
   const [isPaused, setIsPaused] = useState(false);
   const [_pausedLoaded, setPausedLoaded] = useState(false);
@@ -287,6 +288,15 @@ export default function Page() {
         return null;
     }
   }
+
+    useEffect(() => {
+    try {
+      sdk.ready();
+    } catch (err) {
+      // In case we're not inside a Farcaster mini app, avoid crashing
+      console.error("Farcaster miniapp sdk.ready() failed", err);
+    }
+  }, []);
 
   useEffect(() => {
     if (confirmed) {
