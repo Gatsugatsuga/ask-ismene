@@ -10,7 +10,6 @@ import {
 } from "wagmi";
 import type { Abi } from "viem";
 import { useProfile } from "@farcaster/auth-kit";
-import { sdk } from "@farcaster/miniapp-sdk";
 
 import { abi as askIsmeneBoothAbi } from "@/lib/abi/askIsmene";
 
@@ -18,11 +17,6 @@ const CONTRACT_ADDRESS =
   process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
   process.env.CONTRACT_ADDRESS ||
   "";
-
-const USDC_ADDRESS =
-  (process.env.NEXT_PUBLIC_USDC || process.env.USDC_ADDRESS || "") as
-    | `0x${string}`
-    | "";
 
 // removed: const IS_PAUSED = false;
 
@@ -43,110 +37,205 @@ const erc20Abi: Abi = [
     name: "approve",
     stateMutability: "nonpayable",
     inputs: [
-      { name: "spender", type: "address" },
-      { name: "amount", type: "uint256" },
+      { name: "spender", type: "address", internalType: "address" },
+      { name: "amount", type: "uint256", internalType: "uint256" },
     ],
-    outputs: [{ name: "", type: "bool" }],
+    outputs: [{ name: "success", type: "bool", internalType: "bool" }],
   },
 ];
 
 function getChainLabel(chainId: number | undefined) {
-  if (!chainId) return "Unknown network";
+  if (!chainId) return "Unknown chain";
   if (chainId === 8453) return "Base mainnet";
-  if (chainId === 84532) return "Base Sepolia (testnet)";
+  if (chainId === 84532) return "Base Sepolia";
+  if (chainId === 31337) return "Local dev (Hardhat)";
   return `Chain ID ${chainId}`;
 }
 
-function formatPriceInUsdCents(
-  price: bigint | null | undefined,
-  decimals = 6
-): string | null {
-  if (price == null) return null;
+/* ---------- Layout styles ---------- */
 
-  const priceStr = price.toString().padStart(decimals + 1, "0");
-  const len = priceStr.length;
-  const integerPart = priceStr.slice(0, len - decimals);
-  const decimalPart = priceStr.slice(len - decimals, len - decimals + 2);
-  return `$${integerPart}.${decimalPart}`;
-}
+const pageStyle: CSSProperties = {
+  minHeight: "100vh",
+  margin: 0,
+  padding: 0,
+  background:
+    "linear-gradient(to bottom, #faf8ff 0%, #ffffff 50%, #fff8fb 100%)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  fontFamily:
+    '-apple-system, system-ui, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif',
+};
 
-function formatBigintToTokens(price: bigint | null | undefined): string | null {
-  if (price == null) return null;
+const shellStyle: CSSProperties = {
+  width: "100%",
+  maxWidth: 720,
+  padding: "24px 16px 40px",
+  boxSizing: "border-box",
+  display: "flex",
+  flexDirection: "column",
+  gap: 16,
+};
 
-  const decimals = 6;
-  const priceStr = price.toString().padStart(decimals + 1, "0");
-  const len = priceStr.length;
-  const integerPart = priceStr.slice(0, len - decimals);
-  const decimalPart = priceStr.slice(len - decimals).replace(/0+$/, "") || "0";
+const cardStyle: CSSProperties = {
+  borderRadius: 24,
+  border: "1px solid rgba(148, 163, 184, 0.35)",
+  background:
+    "radial-gradient(circle at top left, #ffffff 0%, #f8f5ff 40%, #ffffff 100%)",
+  boxShadow: "0 20px 40px rgba(0, 0, 0, 0.06)",
+  padding: 18,
+  boxSizing: "border-box",
+};
 
-  return `${integerPart}.${decimalPart}`;
-}
+const smallCardStyle: CSSProperties = {
+  borderRadius: 16,
+  border: "1px solid rgba(203, 213, 225, 0.7)",
+  background: "rgba(248, 250, 252, 0.85)",
+  padding: 10,
+  boxSizing: "border-box",
+};
+
+const headerRowStyle: CSSProperties = {
+  display: "flex",
+  gap: 12,
+  alignItems: "flex-start",
+};
+
+const avatarStyle: CSSProperties = {
+  width: 52,
+  height: 52,
+  borderRadius: "50%",
+  border: "1px solid rgba(148, 163, 184, 0.6)",
+  background:
+    "radial-gradient(circle at 30% 20%, #ffffff 0%, #e5defa 40%, #a4bad6 100%)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  overflow: "hidden",
+};
+
+const headerTextStyle: CSSProperties = {
+  flex: 1,
+};
+
+const pillRowStyle: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 8,
+  alignItems: "center",
+};
+
+const pillStyle: CSSProperties = {
+  fontSize: 11,
+  borderRadius: 999,
+  padding: "4px 10px",
+  border: "1px solid #e5e5e5",
+  background: "#EEF2FF",
+};
+
+const pillMutedStyle: CSSProperties = {
+  ...pillStyle,
+  background: "#F9FAFB",
+  borderColor: "#E5E7EB",
+  color: "#6B7280",
+};
+
+const buttonBase: CSSProperties = {
+  borderRadius: 999,
+  padding: "10px 16px",
+  border: "none",
+  fontSize: 14,
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  fontWeight: 500,
+};
+
+const primaryButtonStyle: CSSProperties = {
+  ...buttonBase,
+  background:
+    "radial-gradient(circle at top left, #ffffff 0%, #c5d4ec 30%, #a4bad6 100%)",
+  color: "#111827",
+  boxShadow: "0 10px 25px rgba(148, 163, 184, 0.45)",
+};
+
+const secondaryButtonStyle: CSSProperties = {
+  ...buttonBase,
+  background: "#F9FAFB",
+  color: "#111827",
+  border: "1px solid #E5E7EB",
+};
+
+const textareaStyle: CSSProperties = {
+  width: "100%",
+  minHeight: 140,
+  borderRadius: 16,
+  border: "1px solid rgba(209, 213, 219, 0.9)",
+  padding: "10px 12px",
+  boxSizing: "border-box",
+  resize: "vertical",
+  fontFamily:
+    '-apple-system, system-ui, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif',
+  fontSize: 14,
+  lineHeight: 1.6,
+  outline: "none",
+  background: "rgba(255, 255, 255, 0.9)",
+};
+
+const checkboxRowStyle: CSSProperties = {
+  display: "flex",
+  gap: 8,
+  alignItems: "flex-start",
+  fontSize: 13,
+};
+
+const formatGrid: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gap: 10,
+  marginTop: 12,
+};
+
+const formatCardBase: CSSProperties = {
+  borderRadius: 18,
+  border: "1px solid #e5e5e5",
+  padding: 14,
+  background: "#F9FAFB",
+  display: "flex",
+  flexDirection: "column",
+  gap: 4,
+  cursor: "pointer",
+};
 
 function formatCardStyle(active: boolean): CSSProperties {
   return {
     ...formatCardBase,
-    borderColor: active ? "#a4bad6" : "#e5e5e5",
-    boxShadow: active
-      ? "0 0 0 1px rgba(164, 186, 214, 0.4), 0 14px 30px rgba(15, 23, 42, 0.25)"
-      : "0 10px 25px rgba(148, 163, 184, 0.35)",
-    transform: active ? "translateY(-1px)" : "translateY(0)",
+    borderColor: active ? "#A4bad6" : "#e5e5e5",
+    background: active ? "#EDF2FA" : "#F9FAFB",
   };
 }
 
-function getPriceLabel(format: Format, priceHaiku: bigint | null, priceVisual: bigint | null, priceOmakase: bigint | null): string {
-  switch (format) {
-    case "haiku":
-      return formatPriceInUsdCents(priceHaiku) ?? "—";
-    case "visual":
-      return formatPriceInUsdCents(priceVisual) ?? "—";
-    case "omakase":
-      return formatPriceInUsdCents(priceOmakase) ?? "—";
-    default:
-      return "—";
-  }
-}
-
-function getPriceDetail(
-  format: Format,
-  priceHaiku: bigint | null,
-  priceVisual: bigint | null,
-  priceOmakase: bigint | null
-): string {
-  const priceTokensHaiku = formatBigintToTokens(priceHaiku);
-  const priceTokensVisual = formatBigintToTokens(priceVisual);
-  const priceTokensOmakase = formatBigintToTokens(priceOmakase);
-
-  switch (format) {
-    case "haiku":
-      return priceTokensHaiku ? `${priceTokensHaiku} USDC` : "—";
-    case "visual":
-      return priceTokensVisual ? `${priceTokensVisual} USDC` : "—";
-    case "omakase":
-      return priceTokensOmakase ? `${priceTokensOmakase} USDC` : "—";
-    default:
-      return "—";
-  }
-}
+/* -------------------------------------------------------- */
 
 export default function Page() {
-  const { address, isConnected: _isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
   const chainId = useChainId();
+  const { profile } = useProfile();
 
-  const { isAuthenticated, profile } = useProfile();
   const [step, setStep] = useState<Step>("hero");
-  const [format, setFormat] = useState<Format | null>(null);
+  const [format, setFormat] = useState<Format>("omakase");
   const [question, setQuestion] = useState("");
-  const [isConsentChecked, setIsConsentChecked] = useState(false);
-
-  const [txHash, setTxHash] = useState<`0x${string}` | undefined>(undefined);
+  const [consentShare, setConsentShare] = useState(false);
+  const [noAI, setNoAI] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [sdkDebug, setSdkDebug] = useState<string | null>(null);
 
-  const {
-    data: _writeHash,
-    writeContractAsync,
-    isPending,
-  } = useWriteContract();
+  // NEW: booth paused state from /api/booth-status
+  const [isPaused, setIsPaused] = useState(false);
+  const [_pausedLoaded, setPausedLoaded] = useState(false);
+ 
+  const { writeContractAsync, data: txHash, isPending } = useWriteContract();
   const { isLoading: waitingReceipt, isSuccess: confirmed } =
     useWaitForTransactionReceipt({ hash: txHash });
 
@@ -162,19 +251,19 @@ export default function Page() {
   const isSubmitting = step === "sending" || isPending;
 
   // Read prices + USDC address
-  const { data: priceHaikuRaw } = useReadContract({
+  const { data: priceHaiku } = useReadContract({
     address: CONTRACT_ADDRESS as `0x${string}`,
     abi: askIsmeneBoothAbi as Abi,
     functionName: "PRICE_HAIKU",
   });
 
-  const { data: priceVisualRaw } = useReadContract({
+  const { data: priceVisual } = useReadContract({
     address: CONTRACT_ADDRESS as `0x${string}`,
     abi: askIsmeneBoothAbi as Abi,
     functionName: "PRICE_VISUAL",
   });
 
-  const { data: priceOmakaseRaw } = useReadContract({
+  const { data: priceOmakase } = useReadContract({
     address: CONTRACT_ADDRESS as `0x${string}`,
     abi: askIsmeneBoothAbi as Abi,
     functionName: "PRICE_OMAKASE",
@@ -186,18 +275,14 @@ export default function Page() {
     functionName: "usdc",
   });
 
-  const priceHaiku = (priceHaikuRaw as bigint | undefined) ?? null;
-  const priceVisual = (priceVisualRaw as bigint | undefined) ?? null;
-  const priceOmakase = (priceOmakaseRaw as bigint | undefined) ?? null;
-
   function getPriceForFormat(): bigint | null {
     switch (format) {
       case "haiku":
-        return priceHaiku;
+        return (priceHaiku as bigint | undefined) ?? null;
       case "visual":
-        return priceVisual;
+        return (priceVisual as bigint | undefined) ?? null;
       case "omakase":
-        return priceOmakase;
+        return (priceOmakase as bigint | undefined) ?? null;
       default:
         return null;
     }
@@ -209,86 +294,53 @@ export default function Page() {
     }
   }, [confirmed]);
 
-  // Farcaster Mini App ready() handling + visible debug
+  // NEW: load paused status from API on mount
   useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    setSdkDebug("effect mounted (mini app)");
-
     let cancelled = false;
 
-    (async () => {
+    async function loadPaused() {
       try {
-        setSdkDebug("calling sdk.actions.ready()...");
-        await sdk.actions.ready();
-        if (cancelled) {
-          setSdkDebug("ready() call aborted (cleanup)");
-          return;
+        const res = await fetch("/api/booth-status");
+        if (!res.ok) return;
+        const data = (await res.json()) as { paused?: boolean };
+        if (!cancelled && typeof data.paused === "boolean") {
+          setIsPaused(data.paused);
         }
-        setSdkDebug("ready() called successfully");
-        console.log("[Ismene] sdk.actions.ready() called (mini app)");
-      } catch (err: unknown) {
-        const msg =
-          err instanceof Error && typeof err.message === "string"
-            ? err.message
-            : String(err);
-        setSdkDebug("error: " + msg);
-        console.error(
-          "[Ismene] Failed to call sdk.actions.ready() (mini app)",
-          err
-        );
+      } finally {
+        if (!cancelled) setPausedLoaded(true);
       }
-    })();
+    }
+
+    loadPaused();
 
     return () => {
       cancelled = true;
     };
   }, []);
 
-  function handleSelectFormat(next: Format) {
+  function handleFormatChange(next: Format) {
+    if (isSubmitting) return;
     setFormat(next);
-    setErrorMsg(null);
     setStep("form");
   }
 
-  function handleBack() {
+  async function handleSubmit() {
     setErrorMsg(null);
-    if (step === "form") {
-      setStep("format");
-      return;
-    }
-    if (step === "format") {
-      setFormat(null);
-      setStep("hero");
-      return;
-    }
-    if (step === "success" || step === "error") {
-      setStep("hero");
-      setFormat(null);
-      setQuestion("");
-      setIsConsentChecked(false);
-      setTxHash(undefined);
+
+    if (!isConnected) {
+      setErrorMsg("Please connect your wallet first.");
       return;
     }
 
-    setStep("hero");
-  }
+    const q = question.trim();
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-
-    if (!format) {
-      setErrorMsg("Please choose a format first.");
+    if (!q) {
+      setErrorMsg("Please ask me a question.");
       return;
     }
 
-    if (!question.trim()) {
-      setErrorMsg("Please share your question or situation.");
-      return;
-    }
-
-    if (!isConsentChecked) {
-      setErrorMsg("Please confirm you understand these are artworks, not advice.");
+    if (q.length > 500) {
+      setErrorMsg("Keep it under 500 characters.");
       return;
     }
 
@@ -319,11 +371,7 @@ export default function Page() {
         return;
       }
 
-      const resolvedUsdcAddress =
-        (usdcAddress as `0x${string}` | undefined) ||
-        (USDC_ADDRESS as `0x${string}` | undefined);
-
-      if (!resolvedUsdcAddress) {
+      if (!usdcAddress) {
         setErrorMsg(
           "USDC address not available yet. Please refresh and try again."
         );
@@ -338,7 +386,7 @@ export default function Page() {
         return;
       }
 
-      const formatId = BigInt(formatMap[format as Format]);
+      const formatId = BigInt(formatMap[format]);
       const trimmedQuestion = question.trim();
 
       const farcasterUsername = profile?.username;
@@ -351,7 +399,7 @@ export default function Page() {
 
       // 1) Approve USDC spend for the booth contract
       const approveHash = await writeContractAsync({
-        address: resolvedUsdcAddress as `0x${string}`,
+        address: usdcAddress as `0x${string}`,
         abi: erc20Abi,
         functionName: "approve",
         args: [CONTRACT_ADDRESS as `0x${string}`, price],
@@ -372,1057 +420,725 @@ export default function Page() {
       if (!askHash) {
         throw new Error("Ask transaction not created");
       }
-
-      setTxHash(askHash as `0x${string}`);
-    } catch (err: unknown) {
-      console.error("[Ismene] handleSend error:", err);
+    } catch (err) {
       const message =
-        err instanceof Error && typeof err.message === "string"
+        err instanceof Error
           ? err.message
-          : "Something went wrong while sending your question.";
+          : "Transaction failed or was rejected. Please try again.";
       setErrorMsg(message);
       setStep("error");
     }
   }
 
-  const _currentPriceLabel = format
-    ? getPriceLabel(format, priceHaiku, priceVisual, priceOmakase)
-    : "—";
-
-  const currentPriceDetail = format
-    ? getPriceDetail(format, priceHaiku, priceVisual, priceOmakase)
-    : "—";
-
-  const isFormStep = step === "form" || step === "sending";
-  const isSuccessStep = step === "success";
-  const isErrorStep = step === "error";
+  const charCount = question.trim().length;
 
   return (
-    <div style={page}>
-      <div style={shell}>
-        <div style={header}>
-          <div style={avatarWrapper}>
-            <div style={avatarInner}>
-              <span style={avatarEmoji}>🫖</span>
+    <>
+      <main style={pageStyle}>
+        <div style={shellStyle}>
+          {/* ENVIRONMENT LABEL */}
+          <div style={smallCardStyle} className="fade-in-soft">
+            <div style={pillRowStyle}>
+              <span style={pillStyle}>Ask booth · Experimental</span>
+              <span style={pillMutedStyle}>{chainLabel}</span>
+              <span style={pillMutedStyle}>Mode {modeLabel}</span>
+            </div>
+            <div style={{ marginTop: 6, fontSize: 11 }}>
+              <div>Contract: {CONTRACT_ADDRESS || "N/A"}</div>
+              <div>Wallet: {address || "Not connected"}</div>
+              <div>{modeHint}</div>
             </div>
           </div>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={titleRow}>
-              <h1 style={title}>Ask me a question, ask me for magic ✨</h1>
-            </div>
-            <p style={subtitle}>
-              Bring me something messy, tender, confusing, or weird — I&apos;ll
-              send back a small piece of contemplative art, linked to you and
-              living onchain.
-            </p>
-          </div>
-        </div>
 
-        <div style={outerCard}>
-          {step === "hero" && (
-            <div>
-              <div style={sectionLabel}>How this works</div>
-              <p style={bodyText}>
-                Share your question or situation, choose how you want it
-                answered, and I&apos;ll create something just for you. Think of
-                it as a quiet, slightly witchy conversation in art form.
-              </p>
-
-              <div style={stepsGrid}>
-                <div style={stepCard}>
-                  <div style={stepNumber}>1</div>
-                  <div style={stepText}>
-                    <div style={stepTitle}>Choose your format</div>
-                    <div style={stepBody}>
-                      Haiku, digital collage, or both. Follow your instinct —
-                      not the price.
-                    </div>
-                  </div>
-                </div>
-
-                <div style={stepCard}>
-                  <div style={stepNumber}>2</div>
-                  <div style={stepText}>
-                    <div style={stepTitle}>Tell me what&apos;s alive in you</div>
-                    <div style={stepBody}>
-                      A dilemma, a knot, something tender or unresolved. The
-                      more honest, the better.
-                    </div>
-                  </div>
-                </div>
-
-                <div style={stepCard}>
-                  <div style={stepNumber}>3</div>
-                  <div style={stepText}>
-                    <div style={stepTitle}>Receive your 1/1 onchain</div>
-                    <div style={stepBody}>
-                      I&apos;ll create and mint your piece on Base within 48
-                      hours, then DM you the link.
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div style={{ marginTop: 22 }}>
-                <button
-                  type="button"
-                  style={primaryButtonStyle}
-                  onClick={() => setStep("format")}
-                >
-                  Ask me for magic
-                </button>
-              </div>
-
-              <div style={footnote}>
-                <span style={{ fontWeight: 500 }}>Note.</span> This is an
-                experiment in care, creativity, and meaning-making. It&apos;s
-                not therapy, coaching, or financial advice.
-              </div>
-            </div>
-          )}
-
-          {step === "format" && (
-            <div>
-              <div style={sectionHeader}>
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  style={backButton}
-                >
-                  ← Back
-                </button>
-                <div style={sectionLabel}>Choose your format</div>
-              </div>
-
-              <p style={bodyText}>
-                Go with what feels right in your body, not what seems the most
-                &quot;worth it&quot;. Each option is a different way of
-                holding your question.
-              </p>
-
-              <div style={formatGrid}>
-                <button
-                  type="button"
-                  onClick={() => handleSelectFormat("haiku")}
-                  style={formatCardStyle(format === "haiku")}
-                >
-                  <div style={formatTitleRow}>
-                    <div style={formatTitle}>Haiku</div>
-                    <div style={pill}>
-                      <span style={pillDot} />
-                      <span style={pillText}>
-                        {getPriceLabel("haiku", priceHaiku, priceVisual, priceOmakase)}
-                      </span>
-                    </div>
-                  </div>
-                  <div style={formatBody}>
-                    Your situation distilled into a three-line poem. Minimal,
-                    sharp, sometimes a little brutal, always kind.
-                  </div>
-                  <div style={formatFootnote}>
-                    
-                    For when you want language more than image.
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSelectFormat("visual")}
-                  style={formatCardStyle(format === "visual")}
-                >
-                  <div style={formatTitleRow}>
-                    <div style={formatTitle}>Digital Collage</div>
-                    <div style={pill}>
-                      <span style={pillDot} />
-                      <span style={pillText}>
-                        {getPriceLabel("visual", priceHaiku, priceVisual, priceOmakase)}
-                      </span>
-                    </div>
-                  </div>
-                  <div style={formatBody}>
-                    A single image built from fragments — textures, symbols,
-                    glitches, soft chaos. Something you can come back to.
-                  </div>
-                  <div style={formatFootnote}>
-                    
-                    For when words feel too sharp and you&apos;d rather look.
-                  </div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleSelectFormat("omakase")}
-                  style={formatCardStyle(format === "omakase")}
-                >
-                  <div style={formatTitleRow}>
-                    <div style={formatTitle}>Haiku + Digital Collage</div>
-                    <div style={pill}>
-                      <span style={pillDot} />
-                      <span style={pillText}>
-                        {getPriceLabel("omakase", priceHaiku, priceVisual, priceOmakase)}
-                      </span>
-                    </div>
-                  </div>
-                  <div style={formatBody}>
-                    Let me choose how to respond. You bring the question, I take
-                    care of the container.
-                  </div>
-                  <div style={formatFootnote}>
-                    
-                    For when you don&apos;t know what you need yet.
-                  </div>
-                </button>
-              </div>
-
-              <div style={{ marginTop: 22 }}>
-                <button
-                  type="button"
-                  style={secondaryButtonStyle}
-                  onClick={handleBack}
-                >
-                  Back
-                </button>
-              </div>
-            </div>
-          )}
-
-          {isFormStep && (
-            <form onSubmit={handleSubmit}>
-              <div style={sectionHeader}>
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  style={backButton}
-                  disabled={isSubmitting}
-                >
-                  ← Back
-                </button>
-                <div style={sectionLabel}>Tell me what&apos;s alive in you</div>
-              </div>
-
-              <p style={bodyText}>
-                There&apos;s no &quot;right&quot; way to ask. You can be very
-                precise, or you can ramble. You can write about something
-                deeply practical or very abstract. I&apos;ll read it all.
-              </p>
-
-              <div style={{ marginBottom: 14 }}>
-                <label
-                  htmlFor="format"
-                  style={{
-                    display: "block",
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: "#374151",
-                    marginBottom: 6,
-                  }}
-                >
-                  You chose
-                </label>
-                <div style={formatSummaryRow}>
-                  <div>
-                    <div style={formatSummaryLabel}>
-                      {format === "haiku" && "Haiku"}
-                      {format === "visual" && "Digital collage"}
-                      {format === "omakase" && "Haiku + digital collage"}
-                    </div>
-                    <div style={formatSummaryPrice}>
-                      {currentPriceDetail}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    style={formatChangeButton}
-                    onClick={() => setStep("format")}
-                    disabled={isSubmitting}
-                  >
-                    Change
-                  </button>
-                </div>
-              </div>
-
-              <div style={{ marginBottom: 14 }}>
-                <label
-                  htmlFor="question"
-                  style={{
-                    display: "block",
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: "#374151",
-                    marginBottom: 6,
-                  }}
-                >
-                  What&apos;s the question, knot, or situation?
-                </label>
-                <textarea
-                  id="question"
-                  name="question"
-                  rows={5}
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  placeholder="Tell me what you&apos;re carrying. Context, feelings, what you&apos;ve tried, what you&apos;re afraid of, what you secretly want..."
-                  style={textarea}
-                  disabled={isSubmitting}
-                />
-              </div>
-
-              <div style={{ marginBottom: 14 }}>
-                <label
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    gap: 8,
-                    fontSize: 12,
-                    color: "#4b5563",
-                    cursor: "pointer",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={isConsentChecked}
-                    onChange={(e) => setIsConsentChecked(e.target.checked)}
-                    disabled={isSubmitting}
-                    style={{
-                      marginTop: 2,
-                      width: 16,
-                      height: 16,
-                      borderRadius: 4,
-                      border: "1px solid #d1d5db",
-                    }}
-                  />
-                  <span>
-                    I understand these are artworks, not therapy, coaching, or
-                    financial advice. I won&apos;t share sensitive personal
-                    data, and I&apos;m ok with this living onchain.
-                  </span>
-                </label>
-              </div>
-
-              <div style={{ marginBottom: 16 }}>
-                <div
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 500,
-                    color: "#374151",
-                    marginBottom: 6,
-                  }}
-                >
-                  What you&apos;ll receive
-                </div>
-                <div style={expectationsBox}>
-                  <p style={expectationText}>
-                    A 1/1 piece minted on Base within 48 hours. I&apos;ll send
-                    you:
-                  </p>
-                  <ul style={expectationList}>
-                    <li>
-                      A contemplative piece (haiku, collage, or both) created
-                      from your question.
-                    </li>
-                    <li>
-                      The token in your wallet, plus a DM on Farcaster with the
-                      link.
-                    </li>
-                    <li>
-                      A small, private ritual of attention — I&apos;ll sit with
-                      what you share.
-                    </li>
-                  </ul>
-                  <p style={expectationText}>
-                    This is an experiment. I care deeply, but I&apos;m not a
-                    therapist, lawyer, or financial advisor.
-                  </p>
-                  <p style={expectationText}>
-                    If I truly have no response for your question, I&apos;ll
-                    return your payment. Otherwise, no refunds — consider it a
-                    delicate and deeply appreciated gesture of support, both
-                    toward me and toward sayILY.art.
-                  </p>
-                  <p style={expectationText}>
-                    If it doesn&apos;t immediately click, think of it as a fancy
-                    tea or a nice meal you&apos;d have gifted a stranger — a
-                    pretty cool gesture in itself. If we vibe and you&apos;re in
-                    Tokyo, matcha&apos;s on me.
-                  </p>
-                  <p style={expectationText}>
-                    By submitting, you confirm you&apos;re 18+, you won&apos;t
-                    share sensitive personal data, and you understand these are
-                    artworks, not professional advice.
-                  </p>
-                </div>
-              </div>
-
-              {/* Farcaster connection block */}
-              <div
+          {/* If you want, you could gate on pausedLoaded here,
+              but keeping it simple: default = open until API says paused */}
+          {isPaused ? (
+            <div style={cardStyle} className="fade-in-soft">
+              <h2
+                className="ismene-heading"
+                style={{ fontSize: 20, marginBottom: 10 }}
+              >
+                Ismene&apos;s workshop is closed right now ✨
+              </h2>
+              <p
                 style={{
-                  marginTop: 16,
-                  paddingTop: 10,
-                  borderTop: "1px dashed #E5E7EB",
+                  fontSize: 14,
+                  lineHeight: 1.7,
+                  marginBottom: 10,
+                  color: "#374151",
                 }}
               >
-                <div
-                  style={{
-                    fontSize: 13,
-                    color: "#374151",
-                    marginBottom: 8,
-                  }}
-                >
-                  Farcaster connection
-                </div>
+                I only open for a few pieces at a time so I can stay fully
+                present with each one—and right now I&apos;m deep into current
+                commissions.
+              </p>
+              <p
+                style={{
+                  fontSize: 14,
+                  lineHeight: 1.7,
+                  marginBottom: 10,
+                  color: "#374151",
+                }}
+              >
+                Feel free to turn on notifications on Farcaster to know when new
+                slots open up.
+              </p>
+              <p
+                style={{
+                  fontSize: 14,
+                  lineHeight: 1.7,
+                  marginBottom: 0,
+                  color: "#374151",
+                }}
+              >
+                Thank you for your patience and your trust! --Ismene
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* HERO */}
+              {step === "hero" && (
+                <div style={cardStyle} className="fade-in-soft">
+                  <div style={headerRowStyle}>
+                    <div style={avatarStyle}>
+                      <img
+                        src="/ismene.png"
+                        alt="Ismène"
+                        style={{
+                          width: "100%",
+                          height: "100%",
+                          borderRadius: "50%",
+                          objectFit: "cover",
+                        }}
+                      />
+                    </div>
+                    <div style={headerTextStyle}>
+                      <h1
+                        className="ismene-heading"
+                        style={{
+                          fontSize: 24,
+                          lineHeight: 1.2,
+                          margin: 0,
+                          marginBottom: 6,
+                        }}
+                      >
+                        Ask me a question, ask me for magic ✨️
+                      </h1>
+                      <p
+                        style={{
+                          fontSize: 14,
+                          lineHeight: 1.7,
+                          margin: 0,
+                          color: "#374151",
+                        }}
+                      >
+                        I&apos;m{" "}
+                        <a
+                          href="https://linktr.ee/ismene"
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            color: "#4b5563",
+                            textDecoration: "underline",
+                            textDecorationStyle: "dotted",
+                          }}
+                        >
+                          Ismène
+                        </a>{" "}
+                        — a writer and visual artist based in Tokyo. I believe
+                        in serendipity, symbolism, and the strange ways clarity
+                        arrives when we stop forcing it.
+                        <br />
+                        <br />
+                        Bring me something messy, tender, confusing — and I&apos;ll
+                        answer in the language I know best: words, images, and
+                        intuition, shaped into a 1/1 artwork. I work with guts,
+                        pattern-spotting, and a soft heart. No guru stuff, no
+                        ten-step frameworks — just presence, intuition, and
+                        craft.
+                        <br />
+                        <br />
+                        Your question becomes art, and art shifts perspective,
+                        enough for something new to breathe.
+                      </p>
+                    </div>
+                  </div>
 
-                {isAuthenticated && profile ? (
-                  <div
+                  <div style={{ marginTop: 18, display: "flex", gap: 10 }}>
+                    <button
+                      style={primaryButtonStyle}
+                      onClick={() => setStep("format")}
+                    >
+                      I&apos;m ready
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* HOW IT WORKS */}
+              {step === "format" && (
+                <div style={cardStyle} className="fade-in-soft">
+                  <h2
+                    className="ismene-heading"
+                    style={{ fontSize: 20, marginBottom: 10 }}
+                  >
+                    How it works
+                  </h2>
+
+                  <p
                     style={{
-                      fontSize: 12,
+                      fontSize: 14,
+                      marginBottom: 10,
+                      lineHeight: 1.7,
                       color: "#4b5563",
-                      padding: "6px 10px",
-                      borderRadius: 999,
-                      background: "#F3F4F6",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 6,
                     }}
                   >
-                    <span
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        background: "#16a34a",
-                      }}
-                    />
-                    <span>
-                      Connected as{" "}
-                      <strong>@{profile.username ?? "farcaster-user"}</strong>
-                      {typeof profile.fid === "number"
-                        ? ` (fid: ${profile.fid})`
-                        : ""}
-                    </span>
+                    Think of this like a tiny omakase for your question: you
+                    bring the real thing you&apos;re carrying, I bring time,
+                    attention, and what I feel is right.
+                  </p>
+
+                  <ol
+                    style={{
+                      listStyle: "decimal",
+                      paddingLeft: 20,
+                      margin: 0,
+                      fontSize: 14,
+                      color: "#374151",
+                      lineHeight: 1.7,
+                    }}
+                  >
+                    <li style={{ marginBottom: 6 }}>
+                      You ask me something genuine that&apos;s sitting on your
+                      mind.
+                    </li>
+                    <li style={{ marginBottom: 6 }}>
+                      You choose how you&apos;d like me to respond.
+                    </li>
+                    <li style={{ marginBottom: 6 }}>
+                      I sit with your question offline and create a 1/1 artwork
+                      in response.
+                    </li>
+                    <li>
+                      Within 48 hours, I mint it on Base and DM you on
+                      Farcaster with your piece.
+                    </li>
+                  </ol>
+
+                  <p
+                    style={{
+                      marginTop: 10,
+                      fontSize: 13,
+                      color: "#4b5563",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    Note: My haikus follow the spirit of the form (brevity,
+                    observation, feeling) rather than strict 5-7-5 syllables —
+                    English doesn&apos;t breathe the same way Japanese does.
+                  </p>
+
+                  <p
+                    style={{
+                      marginTop: 12,
+                      fontSize: 13,
+                      color: "#4b5563",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    I keep this small — around 5 pieces per weekday — so I can
+                    stay present with what you send.
+                  </p>
+
+                  <div
+                    style={{
+                      marginTop: 16,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 10,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <button
+                      style={secondaryButtonStyle}
+                      onClick={() => setStep("hero")}
+                    >
+                      Back
+                    </button>
+                    <button
+                      style={primaryButtonStyle}
+                      onClick={() => setStep("form")}
+                    >
+                      Ask me a question
+                    </button>
                   </div>
-                ) : (
+                </div>
+              )}
+
+              {/* FORM: QUESTION + FORMAT (same page) */}
+              {step === "form" && (
+                <div style={cardStyle} className="fade-in-soft">
+                  <h2
+                    className="ismene-heading"
+                    style={{ fontSize: 20, marginBottom: 10 }}
+                  >
+                    Ask me a question, ask me for magic ✨️
+                  </h2>
+
+                  <p
+                    style={{
+                      fontSize: 13,
+                      color: "#4b5563",
+                      marginBottom: 10,
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    Bring me something real. It can be small and oddly specific
+                    or quietly huge. I&apos;ll read it carefully.
+                  </p>
+
+                  {/* Question input */}
+                  <div style={{ marginBottom: 12 }}>
+                    <textarea
+                      style={textareaStyle}
+                      placeholder={`Examples:
+Why do I keep buying plants I can't keep alive?
+What would choosing myself look like here?
+Is this creative block or am I avoiding something?`}
+                      value={question}
+                      onChange={(e) => setQuestion(e.target.value)}
+                      maxLength={600}
+                    />
+                    <div
+                      style={{
+                        textAlign: "right",
+                        fontSize: 11,
+                        color: "#6B7280",
+                        marginTop: 4,
+                      }}
+                    >
+                      {charCount}/500
+                    </div>
+                  </div>
+
+                  {/* Consent + AI toggle */}
                   <div
                     style={{
                       display: "flex",
                       flexDirection: "column",
-                      gap: 6,
+                      gap: 8,
                     }}
                   >
-                    <span
+                    <label style={checkboxRowStyle}>
+                      <input
+                        type="checkbox"
+                        checked={consentShare}
+                        onChange={(e) => setConsentShare(e.target.checked)}
+                        style={{ marginTop: 3 }}
+                      />
+                      <span style={{ color: "#374151" }}>
+                        You&apos;re okay with your question (anonymized) and my
+                        creative answer being shared on social networks.
+                      </span>
+                    </label>
+
+                    <label style={checkboxRowStyle}>
+                      <input
+                        type="checkbox"
+                        checked={noAI}
+                        onChange={(e) => setNoAI(e.target.checked)}
+                        style={{ marginTop: 3 }}
+                      />
+                      <span style={{ color: "#374151" }}>
+                        Some visual elements may involve AI tools alongside
+                        traditional techniques. Check this if you&apos;d prefer
+                        I avoid AI assistance in your piece.
+                      </span>
+                    </label>
+                  </div>
+
+                  {/* Format selection */}
+                  <div style={{ marginTop: 18 }}>
+                    <h3
+                      className="ismene-heading"
+                      style={{ fontSize: 15, marginBottom: 4 }}
+                    >
+                      Pick your format
+                    </h3>
+                    <p
                       style={{
-                        fontSize: 12,
-                        color: "#6b7280",
+                        fontSize: 13,
+                        color: "#4b5563",
+                        marginBottom: 8,
                       }}
                     >
-                      Connect with Farcaster so I can DM you your piece when
-                      it&apos;s minted.
-                    </span>
+                      You can&apos;t choose wrong — just what feels right for
+                      this moment.
+                    </p>
+
+                    <div style={formatGrid}>
+                      <button
+                        type="button"
+                        onClick={() => handleFormatChange("haiku")}
+                        style={formatCardStyle(format === "haiku")}
+                      >
+                        <div
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 600,
+                            marginBottom: 2,
+                          }}
+                        >
+                          Haiku — $30
+                        </div>
+                        <div style={{ fontSize: 12, color: "#374151" }}>
+                          Your dilemma, distilled into a few lines.
+                          <br />
+                          One breath, no rigid rules.
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleFormatChange("visual")}
+                        style={formatCardStyle(format === "visual")}
+                      >
+                        <div
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 600,
+                            marginBottom: 2,
+                          }}
+                        >
+                          Digital Collage — $60
+                        </div>
+                        <div style={{ fontSize: 12, color: "#374151" }}>
+                          A visual reading.
+                          <br />
+                          No text — just feeling.
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleFormatChange("omakase")}
+                        style={formatCardStyle(format === "omakase")}
+                      >
+                        <div
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 600,
+                            marginBottom: 2,
+                          }}
+                        >
+                          Haiku + Digital Collage — $80
+                        </div>
+                        <div style={{ fontSize: 12, color: "#374151" }}>
+                          Your question, rendered in both language and image.
+                        </div>
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
 
-              {/* Error */}
-              {errorMsg && (
-                <div
-                  style={{
-                    marginTop: 10,
-                    fontSize: 12,
-                    color: "#b91c1c",
-                    background: "#FEF2F2",
-                    borderRadius: 10,
-                    padding: "8px 10px",
-                    border: "1px solid #FCA5A5",
-                  }}
-                >
-                  {errorMsg}
+                  {/* Disclaimer */}
+                  <div
+                    style={{
+                      marginTop: 16,
+                      paddingTop: 10,
+                      borderTop: "1px dashed #E5E7EB",
+                      fontSize: 12,
+                      color: "#4b5563",
+                      lineHeight: 1.7,
+                    }}
+                  >
+                    <p style={{ marginBottom: 6 }}>
+                      This is an experiment. I care deeply, but I&apos;m not a
+                      therapist, lawyer, or financial advisor.
+                    </p>
+                    <p style={{ marginBottom: 6 }}>
+                      If I truly have no response for your question, I&apos;ll
+                      return your payment. Otherwise, no refunds — consider it a
+                      delicate and deeply appreciated gesture of support, both
+                      toward me and toward sayILY.art.
+                    </p>
+                    <p style={{ marginBottom: 6 }}>
+                      If it doesn&apos;t immediately click, think of it as a
+                      fancy tea or a nice meal you&apos;d have gifted a
+                      stranger — a pretty cool gesture in itself. If we vibe and
+                      you&apos;re in Tokyo, matcha&apos;s on me.
+                    </p>
+                    <p style={{ marginBottom: 0 }}>
+                      By submitting, you confirm you&apos;re 18+, you won&apos;t
+                      share sensitive personal data, and you understand these
+                      are artworks, not professional advice.
+                    </p>
+                  </div>
+
+                  {/* Error */}
+                  {errorMsg && (
+                    <div
+                      style={{
+                        marginTop: 10,
+                        fontSize: 12,
+                        color: "#b91c1c",
+                        background: "#FEF2F2",
+                        borderRadius: 10,
+                        padding: "8px 10px",
+                        border: "1px solid #FEE2E2",
+                      }}
+                    >
+                      {errorMsg}
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div
+                    style={{
+                      marginTop: 16,
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: 10,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <button
+                      style={secondaryButtonStyle}
+                      type="button"
+                      onClick={() => setStep("format")}
+                      disabled={isSubmitting}
+                    >
+                      Back
+                    </button>
+                    <button
+                      style={{
+                        ...primaryButtonStyle,
+                        opacity: isSubmitting ? 0.7 : 1,
+                      }}
+                      type="button"
+                      onClick={handleSubmit}
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? "Sending…" : "Send to Ismène"}
+                    </button>
+                  </div>
                 </div>
               )}
 
-              <div style={{ marginTop: 16 }}>
-                <button
-                  type="submit"
-                  style={primaryButtonStyle}
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting
-                    ? waitingReceipt
-                      ? "Waiting for confirmation..."
-                      : "Sending..."
-                    : "Send to Ismène"}
-                </button>
-              </div>
-            </form>
-          )}
-
-          {isSuccessStep && (
-            <div>
-              <div style={sectionHeader}>
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  style={backButton}
-                >
-                  ← Back
-                </button>
-                <div style={sectionLabel}>Thank you</div>
-              </div>
-
-              <p style={bodyText}>
-                I&apos;ve received your question and I&apos;ll sit with it
-                carefully. I&apos;ll create your piece and mint it on Base
-                within 48 hours.
-              </p>
-
-              <div style={successBox}>
-                <div style={successIcon}>✨</div>
-                <div style={successText}>
-                  <div style={successTitle}>What happens next</div>
-                  <ul style={expectationList}>
-                    <li>I create your artwork in the selected format.</li>
-                    <li>
-                      I mint it as a 1/1 on Base, linked to your wallet and
-                      Farcaster identity.
-                    </li>
-                    <li>
-                      I DM you the link on Farcaster so you can view and hold
-                      it.
-                    </li>
-                  </ul>
-                </div>
-              </div>
-
-              <div style={{ marginTop: 16 }}>
-                <button
-                  type="button"
-                  style={secondaryButtonStyle}
-                  onClick={() => {
-                    setStep("hero");
-                    setFormat(null);
-                    setQuestion("");
-                    setIsConsentChecked(false);
-                    setTxHash(undefined);
-                    setErrorMsg(null);
-                  }}
-                >
-                  Ask another question
-                </button>
-              </div>
-            </div>
-          )}
-
-          {isErrorStep && (
-            <div>
-              <div style={sectionHeader}>
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  style={backButton}
-                >
-                  ← Back
-                </button>
-                <div style={sectionLabel}>Something went wrong</div>
-              </div>
-
-              <p style={bodyText}>
-                Your question wasn&apos;t sent and you weren&apos;t charged. You
-                can try again, or if this keeps happening, DM me on Farcaster
-                and I&apos;ll look into it.
-              </p>
-
-              {errorMsg && (
-                <div
-                  style={{
-                    marginTop: 10,
-                    fontSize: 12,
-                    color: "#b91c1c",
-                    background: "#FEF2F2",
-                    borderRadius: 10,
-                    padding: "8px 10px",
-                    border: "1px solid #FCA5A5",
-                  }}
-                >
-                  {errorMsg}
+              {/* SENDING */}
+              {step === "sending" && (
+                <div style={cardStyle} className="fade-in-soft">
+                  <div style={{ textAlign: "center" }}>
+                    <div
+                      style={{
+                        fontSize: 48,
+                        marginBottom: 16,
+                        animation: "pulse 2s ease-in-out infinite",
+                      }}
+                    >
+                      ✨
+                    </div>
+                    <p
+                      style={{
+                        fontSize: 15,
+                        color: "#6b7280",
+                        marginBottom: 8,
+                      }}
+                    >
+                      {isPending && "Waiting for wallet confirmation..."}
+                      {waitingReceipt &&
+                        !isPending &&
+                        "Transaction submitted! Confirming..."}
+                      {!isPending &&
+                        !waitingReceipt &&
+                        "Sending your question to Ismène..."}
+                    </p>
+                    {txHash && (
+                      <p style={{ fontSize: 11, color: "#9ca3af" }}>
+                        {txHash.slice(0, 10)}...{txHash.slice(-8)}
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
 
-              <div style={{ marginTop: 16 }}>
-                <button
-                  type="button"
-                  style={primaryButtonStyle}
-                  onClick={() => {
-                    setStep("form");
-                    setErrorMsg(null);
-                  }}
-                >
-                  Back to form
-                </button>
-              </div>
-            </div>
+              {/* SUCCESS */}
+              {step === "success" && (
+                <div style={cardStyle} className="fade-in-soft">
+                  <div style={{ textAlign: "center" }}>
+                    <div
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        width: 64,
+                        height: 64,
+                        borderRadius: "50%",
+                        background: "rgba(164, 186, 214, 0.15)",
+                        marginBottom: 16,
+                      }}
+                    >
+                      <span style={{ fontSize: 32 }}>✨</span>
+                    </div>
+
+                    <h2
+                      className="ismene-heading"
+                      style={{ fontSize: 20, marginBottom: 12 }}
+                    >
+                      Got it ✨
+                    </h2>
+
+                    <p
+                      style={{
+                        fontSize: 15,
+                        lineHeight: 1.7,
+                        marginBottom: 12,
+                      }}
+                    >
+                      Your question reached me. I&apos;ll sit with it and create
+                      your piece within 48 hours.
+                    </p>
+
+                    <p
+                      style={{
+                        fontSize: 14,
+                        color: "#6b7280",
+                        lineHeight: 1.6,
+                      }}
+                    >
+                      You&apos;ll receive a DM on Farcaster when your 1/1 is
+                      minted and ready.
+                    </p>
+
+                    {txHash && (
+                      <details
+                        style={{
+                          marginTop: 16,
+                          fontSize: 11,
+                          textAlign: "left",
+                        }}
+                      >
+                        <summary
+                          style={{
+                            cursor: "pointer",
+                            color: "#6b7280",
+                          }}
+                        >
+                          View transaction details
+                        </summary>
+                        <code
+                          style={{
+                            display: "block",
+                            marginTop: 8,
+                            padding: 10,
+                            background: "#F9FAFB",
+                            borderRadius: 8,
+                            wordBreak: "break-all",
+                            fontSize: 10,
+                            fontFamily: "monospace",
+                          }}
+                        >
+                          {txHash}
+                        </code>
+                      </details>
+                    )}
+
+                    <p
+                      style={{
+                        fontSize: 13,
+                        color: "#9ca3af",
+                        marginTop: 20,
+                        fontStyle: "italic",
+                        borderTop: "1px solid #e5e5e5",
+                        paddingTop: 16,
+                      }}
+                    >
+                      If it doesn&apos;t immediately click, think of it as a
+                      fancy tea you&apos;d have bought a stranger — a pretty
+                      cool gesture in itself. If we vibe and you&apos;re in
+                      Tokyo, matcha&apos;s on me 🍵
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* ERROR */}
+              {step === "error" && (
+                <div style={cardStyle} className="fade-in-soft">
+                  <h2
+                    className="ismene-heading"
+                    style={{ fontSize: 20, marginBottom: 12 }}
+                  >
+                    Something went wrong
+                  </h2>
+
+                  <div
+                    style={{
+                      fontSize: 14,
+                      color: "#dc2626",
+                      padding: 12,
+                      background: "#FEF2F2",
+                      borderRadius: 12,
+                      marginBottom: 12,
+                      border: "1px solid #FEE2E2",
+                    }}
+                  >
+                    {errorMsg}
+                  </div>
+
+                  <p
+                    style={{
+                      fontSize: 13,
+                      color: "#6b7280",
+                      marginBottom: 16,
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    Don&apos;t worry — your question wasn&apos;t sent and you
+                    weren&apos;t charged. Try again, or DM me on Farcaster if
+                    this keeps happening.
+                  </p>
+
+                  <button
+                    style={{ ...secondaryButtonStyle, width: "100%" }}
+                    onClick={() => setStep("form")}
+                  >
+                    Back to form
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
+      </main>
 
-        <div style={footer}>
-          <div style={footerLeft}>
-            <div style={miniLabel}>Mode</div>
-            <div style={miniValue}>
-              {modeLabel} · <span style={{ opacity: 0.85 }}>{chainLabel}</span>
-            </div>
-            <div style={miniHint}>{modeHint}</div>
-          </div>
-          <div style={footerRight}>
-            <div style={miniLabel}>Contract</div>
-            <div style={miniValue}>
-              {CONTRACT_ADDRESS
-                ? `${CONTRACT_ADDRESS.slice(0, 6)}…${CONTRACT_ADDRESS.slice(
-                    -4
-                  )}`
-                : "Not configured"}
-            </div>
-            <div style={miniLabel}>
-              Wallet{" "}
-              <span style={{ opacity: 0.9 }}>
-                {address
-                  ? `${address.slice(0, 6)}…${address.slice(-4)}`
-                  : "Not connected"}
-              </span>
-            </div>
-          </div>
-        </div>
+      <style jsx global>{`
+        .fade-in-soft {
+          animation: fadeInSoft 0.5s ease-out;
+        }
 
-        {process.env.NODE_ENV !== "production" && (
-          <div style={debugBox}>
-            <div style={debugTitle}>Mini app debug</div>
-            <div style={debugLine}>
-              <span>Env-ok:</span> <code>{envOk ? "yes" : "no"}</code>
-            </div>
-            <div style={debugLine}>
-              <span>SDK ready:</span>{" "}
-              <code>{sdkDebug ?? "waiting for ready()…"}</code>
-            </div>
-            <div style={debugLine}>
-              <span>Authenticated:</span>{" "}
-              <code>{isAuthenticated ? "yes" : "no"}</code>
-            </div>
-            <div style={debugLine}>
-              <span>Profile:</span>{" "}
-              <code>
-                {profile
-                  ? `fid=${profile.fid}, @${profile.username ?? "unknown"}`
-                  : "none"}
-              </code>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
+        @keyframes fadeInSoft {
+          from {
+            opacity: 0;
+            transform: translateY(4px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes pulse {
+          0%,
+          100% {
+            opacity: 0.5;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 1;
+            transform: scale(1.05);
+          }
+        }
+      `}</style>
+    </>
   );
 }
-
-// Styles
-
-const page: CSSProperties = {
-  minHeight: "100vh",
-  padding: 16,
-  background:
-    "radial-gradient(circle at top left, #f3f4ff 0%, #e5ecff 30%, #f9fafb 100%)",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "flex-start",
-};
-
-const shell: CSSProperties = {
-  width: "100%",
-  maxWidth: 520,
-  margin: "0 auto",
-  display: "flex",
-  flexDirection: "column",
-  gap: 16,
-};
-
-const header: CSSProperties = {
-  display: "flex",
-  gap: 12,
-  alignItems: "center",
-};
-
-const avatarWrapper: CSSProperties = {
-  width: 52,
-  height: 52,
-  borderRadius: "50%",
-  background:
-    "radial-gradient(circle at top left, #ffffff 0%, #d3e1ff 40%, #a4bad6 100%)",
-  padding: 2,
-  boxShadow: "0 10px 30px rgba(148, 163, 184, 0.55)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-const avatarInner: CSSProperties = {
-  width: "100%",
-  height: "100%",
-  borderRadius: "50%",
-  background: "#0f172a",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-const avatarEmoji: CSSProperties = {
-  fontSize: 24,
-};
-
-const titleRow: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  gap: 8,
-};
-
-const title: CSSProperties = {
-  fontSize: 20,
-  fontWeight: 600,
-  color: "#111827",
-};
-
-const subtitle: CSSProperties = {
-  fontSize: 13,
-  color: "#4b5563",
-  marginTop: 2,
-};
-
-const outerCard: CSSProperties = {
-  background: "rgba(255, 255, 255, 0.96)",
-  borderRadius: 24,
-  padding: 16,
-  boxShadow: "0 18px 45px rgba(15, 23, 42, 0.35)",
-  border: "1px solid rgba(226, 232, 240, 0.9)",
-};
-
-const sectionHeader: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 8,
-  marginBottom: 8,
-};
-
-const sectionLabel: CSSProperties = {
-  fontSize: 13,
-  fontWeight: 600,
-  letterSpacing: 0.02,
-  color: "#4b5563",
-  textTransform: "uppercase",
-};
-
-const bodyText: CSSProperties = {
-  fontSize: 13,
-  color: "#374151",
-  lineHeight: 1.55,
-  marginBottom: 16,
-};
-
-const stepsGrid: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: 10,
-  marginTop: 12,
-};
-
-const stepCard: CSSProperties = {
-  borderRadius: 18,
-  border: "1px solid #e5e7eb",
-  padding: 12,
-  background: "#F9FAFB",
-  display: "flex",
-  gap: 10,
-};
-
-const stepNumber: CSSProperties = {
-  width: 24,
-  height: 24,
-  borderRadius: 999,
-  background: "#E5EDFF",
-  color: "#1d4ed8",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  fontSize: 12,
-  fontWeight: 600,
-};
-
-const stepText: CSSProperties = {
-  flex: 1,
-};
-
-const stepTitle: CSSProperties = {
-  fontSize: 13,
-  fontWeight: 500,
-  color: "#111827",
-  marginBottom: 2,
-};
-
-const stepBody: CSSProperties = {
-  fontSize: 12,
-  color: "#6b7280",
-};
-
-const footnote: CSSProperties = {
-  marginTop: 14,
-  fontSize: 11,
-  color: "#6b7280",
-};
-
-const backButton: CSSProperties = {
-  fontSize: 12,
-  color: "#4b5563",
-  borderRadius: 999,
-  border: "1px solid #D1D5DB",
-  padding: "4px 10px",
-  background: "#F9FAFB",
-  cursor: "pointer",
-};
-
-const formatGrid: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-  gap: 10,
-  marginTop: 12,
-};
-
-const formatCardBase: CSSProperties = {
-  borderRadius: 18,
-  border: "1px solid #e5e5e5",
-  padding: 14,
-  background: "#F9FAFB",
-  display: "flex",
-  flexDirection: "column",
-  gap: 4,
-  cursor: "pointer",
-};
-
-const formatTitleRow: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: 6,
-};
-
-const formatTitle: CSSProperties = {
-  fontSize: 14,
-  fontWeight: 600,
-  color: "#111827",
-};
-
-const formatBody: CSSProperties = {
-  fontSize: 12,
-  color: "#4b5563",
-  lineHeight: 1.5,
-};
-
-const formatFootnote: CSSProperties = {
-  marginTop: 6,
-  fontSize: 11,
-  color: "#6b7280",
-};
-
-const pill: CSSProperties = {
-  borderRadius: 999,
-  background: "#EEF2FF",
-  padding: "4px 8px",
-  fontSize: 11,
-  color: "#1e3a8a",
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 4,
-};
-
-const pillDot: CSSProperties = {
-  width: 6,
-  height: 6,
-  borderRadius: "50%",
-  background: "#4f46e5",
-};
-
-const pillText: CSSProperties = {
-  fontWeight: 500,
-};
-
-const formatSummaryRow: CSSProperties = {
-  borderRadius: 14,
-  border: "1px solid #E5E7EB",
-  padding: 10,
-  background: "#F9FAFB",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 10,
-};
-
-const formatSummaryLabel: CSSProperties = {
-  fontSize: 13,
-  fontWeight: 500,
-  color: "#111827",
-};
-
-const formatSummaryPrice: CSSProperties = {
-  fontSize: 12,
-  color: "#6b7280",
-};
-
-const formatChangeButton: CSSProperties = {
-  fontSize: 11,
-  color: "#1d4ed8",
-  borderRadius: 999,
-  border: "1px solid #BFDBFE",
-  padding: "4px 10px",
-  background: "#EFF6FF",
-  cursor: "pointer",
-};
-
-const textarea: CSSProperties = {
-  width: "100%",
-  borderRadius: 16,
-  border: "1px solid #E5E7EB",
-  padding: 10,
-  fontSize: 13,
-  color: "#111827",
-  resize: "vertical",
-  minHeight: 100,
-  background: "#F9FAFB",
-};
-
-const expectationsBox: CSSProperties = {
-  borderRadius: 18,
-  border: "1px solid #E5E7EB",
-  padding: 12,
-  background:
-    "linear-gradient(120deg, rgba(248, 250, 252, 0.96), rgba(239, 246, 255, 0.96))",
-};
-
-const expectationText: CSSProperties = {
-  fontSize: 12,
-  color: "#4b5563",
-  marginBottom: 6,
-};
-
-const expectationList: CSSProperties = {
-  paddingLeft: 18,
-  fontSize: 12,
-  color: "#4b5563",
-  marginBottom: 6,
-};
-
-const primaryButtonStyle: CSSProperties = {
-  borderRadius: 999,
-  padding: "10px 16px",
-  fontSize: 13,
-  fontWeight: 500,
-  border: "none",
-  cursor: "pointer",
-  background:
-    "radial-gradient(circle at top left, #ffffff 0%, #c5d4ec 30%, #a4bad6 100%)",
-  color: "#111827",
-  boxShadow: "0 10px 25px rgba(148, 163, 184, 0.45)",
-};
-
-const secondaryButtonStyle: CSSProperties = {
-  borderRadius: 999,
-  padding: "10px 16px",
-  fontSize: 13,
-  fontWeight: 500,
-  border: "1px solid #D1D5DB",
-  cursor: "pointer",
-  background: "#F9FAFB",
-  color: "#111827",
-};
-
-const footer: CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: 12,
-  fontSize: 11,
-  color: "#6b7280",
-};
-
-const footerLeft: CSSProperties = {
-  flex: 1,
-};
-
-const footerRight: CSSProperties = {
-  textAlign: "right",
-};
-
-const miniLabel: CSSProperties = {
-  fontSize: 11,
-  fontWeight: 500,
-  color: "#6b7280",
-};
-
-const miniValue: CSSProperties = {
-  fontSize: 12,
-  fontWeight: 500,
-  color: "#111827",
-};
-
-const miniHint: CSSProperties = {
-  fontSize: 11,
-  color: "#6b7280",
-};
-
-const successBox: CSSProperties = {
-  marginTop: 12,
-  borderRadius: 18,
-  border: "1px solid #DCFCE7",
-  padding: 12,
-  background:
-    "linear-gradient(120deg, rgba(240, 253, 250, 0.96), rgba(220, 252, 231, 0.96))",
-  display: "flex",
-  gap: 10,
-};
-
-const successIcon: CSSProperties = {
-  width: 26,
-  height: 26,
-  borderRadius: "50%",
-  background: "#22C55E",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  color: "#ECFDF5",
-  fontSize: 16,
-};
-
-const successText: CSSProperties = {
-  flex: 1,
-};
-
-const successTitle: CSSProperties = {
-  fontSize: 13,
-  fontWeight: 500,
-  color: "#14532D",
-  marginBottom: 4,
-};
-
-const debugBox: CSSProperties = {
-  marginTop: 10,
-  borderRadius: 16,
-  border: "1px dashed rgba(148, 163, 184, 0.6)",
-  padding: 10,
-  background: "rgba(15, 23, 42, 0.03)",
-  fontSize: 11,
-  color: "#4b5563",
-};
-
-const debugTitle: CSSProperties = {
-  fontSize: 11,
-  fontWeight: 600,
-  marginBottom: 4,
-};
-
-const debugLine: CSSProperties = {
-  display: "flex",
-  gap: 4,
-  alignItems: "baseline",
-};
-
