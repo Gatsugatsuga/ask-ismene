@@ -46,6 +46,7 @@ const erc20Abi: Abi = [
   },
 ];
 
+// tiny helper type so we can call sdk.actions.ready() safely
 type MiniAppSdkLike = {
   actions?: {
     ready?: () => void;
@@ -239,11 +240,10 @@ export default function Page() {
   const [noAI, setNoAI] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-
   // NEW: booth paused state from /api/booth-status
   const [isPaused, setIsPaused] = useState(false);
   const [_pausedLoaded, setPausedLoaded] = useState(false);
- 
+
   const { writeContractAsync, data: txHash, isPending } = useWriteContract();
   const { isLoading: waitingReceipt, isSuccess: confirmed } =
     useWaitForTransactionReceipt({ hash: txHash });
@@ -297,7 +297,8 @@ export default function Page() {
     }
   }
 
-         useEffect(() => {
+  // Farcaster mini-app: mark content ready if we’re inside a mini-app
+  useEffect(() => {
     try {
       const miniSdk = sdk as unknown as MiniAppSdkLike;
       miniSdk.actions?.ready?.();
@@ -392,7 +393,7 @@ export default function Page() {
 
       if (!usdcAddress) {
         setErrorMsg(
-          "USDC address not available yet. Please refresh and try again."
+          "USDC address not available yet. Please refresh and try again.",
         );
         setStep("error");
         return;
@@ -520,6 +521,7 @@ export default function Page() {
                 <div style={cardStyle} className="fade-in-soft">
                   <div style={headerRowStyle}>
                     <div style={avatarStyle}>
+                      {/* leaving <img> as-is to avoid touching copy/layout */}
                       <img
                         src="/ismene.png"
                         alt="Ismène"
