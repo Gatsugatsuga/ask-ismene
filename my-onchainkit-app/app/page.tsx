@@ -8,7 +8,9 @@ import {
   useReadContract,
   useWriteContract,
   useWaitForTransactionReceipt,
+  useConnect,
 } from "wagmi";
+
 import type { Abi } from "viem";
 import { useProfile } from "@farcaster/auth-kit";
 import { sdk } from "@farcaster/miniapp-sdk";
@@ -236,6 +238,7 @@ export default function Page() {
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
   const { profile } = useProfile();
+  const { connectAsync, connectors } = useConnect();
 
   const [step, setStep] = useState<Step>("hero");
   const [format, setFormat] = useState<Format>("omakase");
@@ -253,12 +256,13 @@ export default function Page() {
     useWaitForTransactionReceipt({ hash: txHash });
 
   const envOk =
-  Boolean(CONTRACT_ADDRESS && USDC_ADDRESS) &&
-  Array.isArray(askIsmeneBoothAbi);
-  const canWrite = envOk;
+  Boolean(CONTRACT_ADDRESS) && Array.isArray(askIsmeneBoothAbi);
 
-  const chainLabel = getChainLabel(chainId);
-  const modeLabel = canWrite ? "On-chain" : "Dry-run";
+const canWrite = envOk;
+
+const chainLabel = getChainLabel(chainId);
+const modeLabel = canWrite ? "On-chain" : "Dry-run";
+
   const modeHint = canWrite
     ? "Your question will be sent to the contract on Base."
     : "No write function detected — this stays as an experimental booth.";
@@ -351,27 +355,46 @@ const usdcAddress = USDC_ADDRESS
   }
 
   async function handleSubmit() {
-    setErrorMsg(null);
+  setErrorMsg(null);
 
-    if (!isConnected) {
-      setErrorMsg("Please connect your wallet first.");
+  // 1) Try to connect the Farcaster wallet automatically if not connected yet
+  if (!isConnected) {
+    const defaultConnector = connectors[0];
+
+    if (!defaultConnector) {
+      setErrorMsg(
+        "Wallet connection is not available in this context. Please open this mini app in Warpcast with a wallet enabled."
+      );
       return;
     }
 
-    const q = question.trim();
-
-    if (!q) {
-      setErrorMsg("Please ask me a question.");
+    try {
+      await connectAsync({ connector: defaultConnector });
+    } catch (err) {
+      console.error("Wallet connection failed", err);
+      setErrorMsg(
+        "Could not connect your wallet. Please use the Wallet button below, then try again."
+      );
       return;
     }
-
-    if (q.length > 500) {
-      setErrorMsg("Keep it under 500 characters.");
-      return;
-    }
-
-    await handleSend();
   }
+
+  // 2) Validate question
+  const q = question.trim();
+
+  if (!q) {
+    setErrorMsg("Please ask me a question.");
+    return;
+  }
+
+  if (q.length > 500) {
+    setErrorMsg("Keep it under 500 characters.");
+    return;
+  }
+
+  // 3) Proceed to send (this will now have a connected wallet)
+  await handleSend();
+}
 
   async function handleSend() {
     try {
