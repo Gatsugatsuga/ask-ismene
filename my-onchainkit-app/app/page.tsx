@@ -368,12 +368,12 @@ const usdcAddress = USDC_ADDRESS
       return;
     }
 
-    try {
+        try {
       await connectAsync({ connector: defaultConnector });
     } catch (err) {
       console.error("Wallet connection failed", err);
       setErrorMsg(
-        "Could not connect your wallet. Please use the Wallet button below, then try again."
+        "Could not connect your Farcaster wallet. Please make sure you’re opening this mini app inside Warpcast with a wallet set up, then try again."
       );
       return;
     }
