@@ -20,6 +20,10 @@ const CONTRACT_ADDRESS =
   process.env.CONTRACT_ADDRESS ||
   "";
 
+  // NEW: USDC address from env (fallback if contract call fails)
+const USDC_ADDRESS =
+  process.env.NEXT_PUBLIC_USDC || process.env.USDC_ADDRESS || "";
+
 // removed: const IS_PAUSED = false;
 
 type Step = "hero" | "format" | "form" | "sending" | "success" | "error";
@@ -272,17 +276,22 @@ export default function Page() {
     functionName: "PRICE_VISUAL",
   });
 
-  const { data: priceOmakase } = useReadContract({
+   const { data: priceOmakase } = useReadContract({
     address: CONTRACT_ADDRESS as `0x${string}`,
     abi: askIsmeneBoothAbi as Abi,
     functionName: "PRICE_OMAKASE",
   });
 
-  const { data: usdcAddress } = useReadContract({
+  // Read USDC from contract, but fall back to env if it doesn't resolve
+  const { data: usdcAddressOnChain } = useReadContract({
     address: CONTRACT_ADDRESS as `0x${string}`,
     abi: askIsmeneBoothAbi as Abi,
     functionName: "usdc",
   });
+
+  const usdcAddress =
+    (usdcAddressOnChain as `0x${string}` | undefined) ||
+    (USDC_ADDRESS ? (USDC_ADDRESS as `0x${string}`) : undefined);
 
   function getPriceForFormat(): bigint | null {
     switch (format) {
