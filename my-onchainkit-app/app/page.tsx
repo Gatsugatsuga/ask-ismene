@@ -252,7 +252,9 @@ export default function Page() {
   const { isLoading: waitingReceipt, isSuccess: confirmed } =
     useWaitForTransactionReceipt({ hash: txHash });
 
-  const envOk = Boolean(CONTRACT_ADDRESS) && Array.isArray(askIsmeneBoothAbi);
+  const envOk =
+  Boolean(CONTRACT_ADDRESS && USDC_ADDRESS) &&
+  Array.isArray(askIsmeneBoothAbi);
   const canWrite = envOk;
 
   const chainLabel = getChainLabel(chainId);
@@ -282,16 +284,11 @@ export default function Page() {
     functionName: "PRICE_OMAKASE",
   });
 
-  // Read USDC from contract, but fall back to env if it doesn't resolve
-  const { data: usdcAddressOnChain } = useReadContract({
-    address: CONTRACT_ADDRESS as `0x${string}`,
-    abi: askIsmeneBoothAbi as Abi,
-    functionName: "usdc",
-  });
+  // Use USDC address from env (AskIsmeneBooth is deployed with this same address)
+const usdcAddress = USDC_ADDRESS
+  ? (USDC_ADDRESS as `0x${string}`)
+  : undefined;
 
-  const usdcAddress =
-    (usdcAddressOnChain as `0x${string}` | undefined) ||
-    (USDC_ADDRESS ? (USDC_ADDRESS as `0x${string}`) : undefined);
 
   function getPriceForFormat(): bigint | null {
     switch (format) {
