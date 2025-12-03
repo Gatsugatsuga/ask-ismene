@@ -40,6 +40,7 @@
     "test": "test"
   },
   "dependencies": {
+    "@farcaster/miniapp-wagmi-connector": "^1.1.0",
     "abbrev": "^1.0.9",
     "abitype": "^1.1.0",
     "acorn": "^8.15.0",
