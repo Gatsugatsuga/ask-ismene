@@ -17,6 +17,19 @@ export const metadata: Metadata = {
     url: "https://ask-ismene.vercel.app",
     type: "website",
   },
+  other: {
+    "fc:miniapp": JSON.stringify({
+      version: "next",
+      imageUrl: "https://ask-ismene.vercel.app/icon.png",
+      button: {
+        title: "Open App",
+        action: {
+          type: "launch_frame",
+          url: "https://ask-ismene.vercel.app",
+        },
+      },
+    }),
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
