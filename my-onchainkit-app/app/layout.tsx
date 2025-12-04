@@ -3,7 +3,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
-import RootProvider from "./RootProvider";
+import RootProvider from "./rootProvider";
 
 export const metadata: Metadata = {
   title: "Ask Ismene",
