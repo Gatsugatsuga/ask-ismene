@@ -10,3 +10,4 @@ export const wagmiConfig = createConfig({
   },
   ssr: true,
 });
+

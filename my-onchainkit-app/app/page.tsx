@@ -22,7 +22,7 @@ const CONTRACT_ADDRESS =
   process.env.CONTRACT_ADDRESS ||
   "";
 
-  // NEW: USDC address from env (fallback if contract call fails)
+// NEW: USDC address from env (fallback if contract call fails)
 const USDC_ADDRESS =
   process.env.NEXT_PUBLIC_USDC || process.env.USDC_ADDRESS || "";
 
@@ -256,12 +256,12 @@ export default function Page() {
     useWaitForTransactionReceipt({ hash: txHash });
 
   const envOk =
-  Boolean(CONTRACT_ADDRESS) && Array.isArray(askIsmeneBoothAbi);
+    Boolean(CONTRACT_ADDRESS) && Array.isArray(askIsmeneBoothAbi);
 
-const canWrite = envOk;
+  const canWrite = envOk;
 
-const chainLabel = getChainLabel(chainId);
-const modeLabel = canWrite ? "On-chain" : "Dry-run";
+  const chainLabel = getChainLabel(chainId);
+  const modeLabel = canWrite ? "On-chain" : "Dry-run";
 
   const modeHint = canWrite
     ? "Your question will be sent to the contract on Base."
@@ -282,17 +282,16 @@ const modeLabel = canWrite ? "On-chain" : "Dry-run";
     functionName: "PRICE_VISUAL",
   });
 
-   const { data: priceOmakase } = useReadContract({
+  const { data: priceOmakase } = useReadContract({
     address: CONTRACT_ADDRESS as `0x${string}`,
     abi: askIsmeneBoothAbi as Abi,
     functionName: "PRICE_OMAKASE",
   });
 
   // Use USDC address from env (AskIsmeneBooth is deployed with this same address)
-const usdcAddress = USDC_ADDRESS
-  ? (USDC_ADDRESS as `0x${string}`)
-  : undefined;
-
+  const usdcAddress = USDC_ADDRESS
+    ? (USDC_ADDRESS as `0x${string}`)
+    : undefined;
 
   function getPriceForFormat(): bigint | null {
     switch (format) {
@@ -355,46 +354,46 @@ const usdcAddress = USDC_ADDRESS
   }
 
   async function handleSubmit() {
-  setErrorMsg(null);
+    setErrorMsg(null);
 
-  // 1) Try to connect the Farcaster wallet automatically if not connected yet
-  if (!isConnected) {
-    const defaultConnector = connectors[0];
+    // 1) Try to connect the Farcaster wallet automatically if not connected yet
+    if (!isConnected) {
+      const defaultConnector = connectors[0];
 
-    if (!defaultConnector) {
-      setErrorMsg(
-        "Wallet connection is not available in this context. Please open this mini app in Warpcast with a wallet enabled."
-      );
+      if (!defaultConnector) {
+        setErrorMsg(
+          "Wallet connection is not available in this context. Please open this mini app in Warpcast with a wallet enabled."
+        );
+        return;
+      }
+
+      try {
+        await connectAsync({ connector: defaultConnector });
+      } catch (err) {
+        console.error("Wallet connection failed", err);
+        setErrorMsg(
+          "Could not connect your Farcaster wallet. Please make sure you’re opening this mini app inside Warpcast with a wallet set up, then try again."
+        );
+        return;
+      }
+    }
+
+    // 2) Validate question
+    const q = question.trim();
+
+    if (!q) {
+      setErrorMsg("Please ask me a question.");
       return;
     }
 
-        try {
-      await connectAsync({ connector: defaultConnector });
-    } catch (err) {
-      console.error("Wallet connection failed", err);
-      setErrorMsg(
-        "Could not connect your Farcaster wallet. Please make sure you’re opening this mini app inside Warpcast with a wallet set up, then try again."
-      );
+    if (q.length > 500) {
+      setErrorMsg("Keep it under 500 characters.");
       return;
     }
+
+    // 3) Proceed to send (this will now have a connected wallet)
+    await handleSend();
   }
-
-  // 2) Validate question
-  const q = question.trim();
-
-  if (!q) {
-    setErrorMsg("Please ask me a question.");
-    return;
-  }
-
-  if (q.length > 500) {
-    setErrorMsg("Keep it under 500 characters.");
-    return;
-  }
-
-  // 3) Proceed to send (this will now have a connected wallet)
-  await handleSend();
-}
 
   async function handleSend() {
     try {
@@ -405,12 +404,6 @@ const usdcAddress = USDC_ADDRESS
       if (!canWrite) {
         await new Promise((resolve) => setTimeout(resolve, 900));
         setStep("success");
-        return;
-      }
-
-      if (!address) {
-        setErrorMsg("Please connect your wallet first.");
-        setStep("error");
         return;
       }
 
@@ -892,37 +885,38 @@ Is this creative block or am I avoiding something?`}
 
                   {/* Disclaimer */}
                   <div
-                    style={{
-                      marginTop: 16,
-                      paddingTop: 10,
-                      borderTop: "1px dashed #E5E7EB",
-                      fontSize: 12,
-                      color: "#4b5563",
-                      lineHeight: 1.7,
-                    }}
-                  >
-                    <p style={{ marginBottom: 6 }}>
-                      This is an experiment. I care deeply, but I&apos;m not a
-                      therapist, lawyer, or financial advisor.
-                    </p>
-                    <p style={{ marginBottom: 6 }}>
-                      If I truly have no response for your question, I&apos;ll
-                      return your payment. Otherwise, no refunds — consider it a
-                      delicate and deeply appreciated gesture of support, both
-                      toward me and toward sayILY.art.
-                    </p>
-                    <p style={{ marginBottom: 6 }}>
-                      If it doesn&apos;t immediately click, think of it as a
-                      fancy tea or a nice meal you&apos;d have gifted a
-                      stranger — a pretty cool gesture in itself. If we vibe and
-                      you&apos;re in Tokyo, matcha&apos;s on me.
-                    </p>
-                    <p style={{ marginBottom: 0 }}>
-                      By submitting, you confirm you&apos;re 18+, you won&apos;t
-                      share sensitive personal data, and you understand these
-                      are artworks, not professional advice.
-                    </p>
-                  </div>
+  style={{
+    marginTop: 16,
+    paddingTop: 10,
+    borderTop: "1px dashed #E5E7EB",
+    fontSize: 12,
+    color: "#4b5563",
+    lineHeight: 1.7,
+  }}
+>
+  <p style={{ marginBottom: 6 }}>
+    This is an experiment. I care deeply, but I&apos;m not a therapist, lawyer, or
+    financial advisor.
+  </p>
+  <p style={{ marginBottom: 6 }}>
+    If I truly have no response for your question, I&apos;ll return your payment.
+    Otherwise, no refunds — consider it a delicate and deeply appreciated gesture
+    of support, both toward me and toward sayILY.art.
+  </p>
+  <p style={{ marginBottom: 6 }}>
+    If it doesn&apos;t immediately click, think of it as a fancy tea or a nice meal
+    you&apos;d have gifted a stranger — a pretty cool gesture in itself. If we vibe
+    and you&apos;re in Tokyo, matcha&apos;s on me.
+  </p>
+  <p style={{ marginBottom: 6 }}>
+    By submitting, you confirm you&apos;re 18+, you won&apos;t share sensitive personal
+    data, and you understand these are artworks, not professional advice.
+  </p>
+  <p style={{ marginBottom: 0 }}>
+    This contract is experimental and unaudited; use it with the same care you’d
+    bring to any small onchain experience.
+  </p>
+</div>
 
                   {/* Error */}
                   {errorMsg && (
