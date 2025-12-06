@@ -18,12 +18,12 @@ export const metadata: Metadata = {
     type: "website",
   },
   other: {
-    // Required for native Mini App rendering
+    // Farcaster Mini App embed config
     "fc:miniapp": JSON.stringify({
-      version: "vNext",
+      version: "next",
       imageUrl: "https://ask-ismene.vercel.app/icon.png",
       button: {
-        title: "Ask Ismene",
+        title: "Open App",
         action: {
           type: "launch_frame",
           name: "ask-ismene",
@@ -33,6 +33,27 @@ export const metadata: Metadata = {
     }),
   },
 };
+
+export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <body className="bg-[#f9f3f1] text-slate-900">
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.IS_FARCASTER =
+                typeof window !== "undefined" &&
+                (navigator.userAgent.includes("Warpcast") ||
+                 navigator.userAgent.includes("Farcaster"));
+            `,
+          }}
+        />
+        <RootProvider>{children}</RootProvider>
+      </body>
+    </html>
+  );
+}
+
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
