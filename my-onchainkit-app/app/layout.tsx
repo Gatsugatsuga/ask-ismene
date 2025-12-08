@@ -21,12 +21,13 @@ export const metadata: Metadata = {
     // Farcaster Mini App embed config
     "fc:miniapp": JSON.stringify({
       version: "next",
+      name: "ask-ismene",
       imageUrl: "https://ask-ismene.vercel.app/icon.png",
+      aspectRatio: "1:1",
       button: {
         title: "Open App",
         action: {
           type: "launch_frame",
-          name: "ask-ismene", // miniapp name for Farcaster
           url: "https://ask-ismene.vercel.app",
         },
       },
@@ -38,48 +39,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body className="bg-[#f9f3f1] text-slate-900">
-        {/* Inject env flag so the app knows when it runs inside Farcaster */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.IS_FARCASTER =
-                typeof window !== "undefined" &&
-                (navigator.userAgent.includes("Warpcast") ||
-                 navigator.userAgent.includes("Farcaster"));
-            `,
-          }}
-        />
-        <RootProvider>{children}</RootProvider>
-      </body>
-    </html>
-  );
-}
-
-  return (
-    <html lang="en">
-      <body className="bg-[#f9f3f1] text-slate-900">
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              window.IS_FARCASTER =
-                typeof window !== "undefined" &&
-                (navigator.userAgent.includes("Warpcast") ||
-                 navigator.userAgent.includes("Farcaster"));
-            `,
-          }}
-        />
-        <RootProvider>{children}</RootProvider>
-      </body>
-    </html>
-  );
-}
-
-
-export default function RootLayout({ children }: { children: ReactNode }) {
-  return (
-    <html lang="en">
-      <body className="bg-[#f9f3f1] text-slate-900">
-        {/* Inject env flag so the app knows when it runs inside Farcaster */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
