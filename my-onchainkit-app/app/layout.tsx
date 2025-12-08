@@ -28,6 +28,7 @@ export const metadata: Metadata = {
         title: "Open App",
         action: {
           type: "launch_frame",
+          name: "ask-ismene",
           url: "https://ask-ismene.vercel.app",
         },
       },
