@@ -26,7 +26,7 @@ export const metadata: Metadata = {
         title: "Open App",
         action: {
           type: "launch_frame",
-          name: "ask-ismene",
+          name: "ask-ismene", // miniapp name for Farcaster
           url: "https://ask-ismene.vercel.app",
         },
       },
@@ -35,6 +35,26 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
+  return (
+    <html lang="en">
+      <body className="bg-[#f9f3f1] text-slate-900">
+        {/* Inject env flag so the app knows when it runs inside Farcaster */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.IS_FARCASTER =
+                typeof window !== "undefined" &&
+                (navigator.userAgent.includes("Warpcast") ||
+                 navigator.userAgent.includes("Farcaster"));
+            `,
+          }}
+        />
+        <RootProvider>{children}</RootProvider>
+      </body>
+    </html>
+  );
+}
+
   return (
     <html lang="en">
       <body className="bg-[#f9f3f1] text-slate-900">
