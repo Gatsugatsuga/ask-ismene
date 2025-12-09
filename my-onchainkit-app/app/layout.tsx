@@ -18,7 +18,6 @@ export const metadata: Metadata = {
     type: "website",
   },
   other: {
-    // Farcaster Mini App embed config
     "fc:miniapp": JSON.stringify({
       version: "next",
       name: "ask-ismene",
