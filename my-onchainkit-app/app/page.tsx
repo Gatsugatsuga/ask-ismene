@@ -52,6 +52,31 @@ const erc20Abi: Abi = [
   },
 ];
 
+const boothPricingAbi: Abi = [
+  {
+    type: "function",
+    name: "PRICE_HAIKU",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "PRICE_VISUAL",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "PRICE_OMAKASE",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+];
+
+
 // tiny helper type so we can call sdk.actions.ready() safely
 type MiniAppSdkLike = {
   actions?: {
@@ -277,7 +302,7 @@ export default function Page() {
   const { data: priceHaiku } = useReadContract({
     chainId: READ_CHAIN_ID,
     address: CONTRACT_ADDRESS as `0x${string}`,
-    abi: askIsmeneBoothAbi as Abi,
+    abi: boothPricingAbi,
     functionName: "PRICE_HAIKU",
     query: { enabled: readEnabled },
   });
@@ -285,7 +310,7 @@ export default function Page() {
   const { data: priceVisual } = useReadContract({
     chainId: READ_CHAIN_ID,
     address: CONTRACT_ADDRESS as `0x${string}`,
-    abi: askIsmeneBoothAbi as Abi,
+    abi: boothPricingAbi,
     functionName: "PRICE_VISUAL",
     query: { enabled: readEnabled },
   });
@@ -293,7 +318,7 @@ export default function Page() {
   const { data: priceOmakase } = useReadContract({
     chainId: READ_CHAIN_ID,
     address: CONTRACT_ADDRESS as `0x${string}`,
-    abi: askIsmeneBoothAbi as Abi,
+    abi: boothPricingAbi,
     functionName: "PRICE_OMAKASE",
     query: { enabled: readEnabled },
   });
