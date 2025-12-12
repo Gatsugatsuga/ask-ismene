@@ -269,42 +269,56 @@ export default function Page() {
 
   const isSubmitting = step === "sending" || isPending;
 
-  // Read prices + USDC address
+      // Read prices + USDC address
+  const READ_CHAIN_ID = 8453; // Base mainnet
+
+  const readEnabled = Boolean(CONTRACT_ADDRESS) && envOk;
+
   const { data: priceHaiku } = useReadContract({
+    chainId: READ_CHAIN_ID,
     address: CONTRACT_ADDRESS as `0x${string}`,
     abi: askIsmeneBoothAbi as Abi,
     functionName: "PRICE_HAIKU",
+    query: { enabled: readEnabled },
   });
 
   const { data: priceVisual } = useReadContract({
+    chainId: READ_CHAIN_ID,
     address: CONTRACT_ADDRESS as `0x${string}`,
     abi: askIsmeneBoothAbi as Abi,
     functionName: "PRICE_VISUAL",
+    query: { enabled: readEnabled },
   });
 
   const { data: priceOmakase } = useReadContract({
+    chainId: READ_CHAIN_ID,
     address: CONTRACT_ADDRESS as `0x${string}`,
     abi: askIsmeneBoothAbi as Abi,
     functionName: "PRICE_OMAKASE",
+    query: { enabled: readEnabled },
   });
+
+  function getPriceForFormat(): bigint | null {
+    if (!readEnabled) return null;
+
+    switch (format) {
+      case "haiku":
+        return typeof priceHaiku === "bigint" ? priceHaiku : null;
+      case "visual":
+        return typeof priceVisual === "bigint" ? priceVisual : null;
+      case "omakase":
+        return typeof priceOmakase === "bigint" ? priceOmakase : null;
+      default:
+        return null;
+    }
+  }
 
   // Use USDC address from env (AskIsmeneBooth is deployed with this same address)
   const usdcAddress = USDC_ADDRESS
     ? (USDC_ADDRESS as `0x${string}`)
     : undefined;
 
-  function getPriceForFormat(): bigint | null {
-    switch (format) {
-      case "haiku":
-        return (priceHaiku as bigint | undefined) ?? null;
-      case "visual":
-        return (priceVisual as bigint | undefined) ?? null;
-      case "omakase":
-        return (priceOmakase as bigint | undefined) ?? null;
-      default:
-        return null;
-    }
-  }
+
 
   // Farcaster mini-app: mark content ready if we’re inside a mini-app
   useEffect(() => {
