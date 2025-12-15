@@ -5,6 +5,8 @@ import type { ReactNode } from "react";
 
 import { RootProvider } from "./rootProvider";
 
+const MINIAPP_NAME = "ask-ismene";
+
 export const metadata: Metadata = {
   title: "Ask Ismene",
   description:
@@ -20,14 +22,14 @@ export const metadata: Metadata = {
   other: {
     "fc:miniapp": JSON.stringify({
       version: "next",
-      name: "ask-ismene",
+      name: MINIAPP_NAME,
       imageUrl: "https://ask-ismene.vercel.app/icon.png",
       aspectRatio: "1:1",
       button: {
         title: "Open App",
         action: {
           type: "launch_frame",
-          name: "ask-ismene",
+          name: MINIAPP_NAME,
           url: "https://ask-ismene.vercel.app",
         },
       },
