@@ -24,8 +24,8 @@ const CONTRACT_ADDRESS =
 
 // NEW: USDC address from env (fallback if contract call fails)
 const USDC_ADDRESS =
-  process.env.NEXT_PUBLIC_USDC || process.env.USDC_ADDRESS || "";
-
+  process.env.NEXT_PUBLIC_USDC_ADDRESS || "";
+  
 // removed: const IS_PAUSED = false;
 
 type Step = "hero" | "format" | "form" | "sending" | "success" | "error";

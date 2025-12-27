@@ -1,10 +1,8 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
-  webpack: (config) => {
-    config.externals.push("pino-pretty", "lokijs", "encoding");
-    return config;
-  },
+  outputFileTracingRoot: path.join(__dirname, '../'),
 };
 
 export default nextConfig;
