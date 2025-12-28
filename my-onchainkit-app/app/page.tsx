@@ -345,15 +345,32 @@ export default function Page() {
 
 
 
-  // Farcaster mini-app: mark content ready if we’re inside a mini-app
+
+  // Farcaster mini-app: mark content ready if we're inside a mini-app
   useEffect(() => {
-    try {
-      const miniSdk = sdk as unknown as MiniAppSdkLike;
-      miniSdk.actions?.ready?.();
-    } catch (err) {
-      // In case we're not inside a Farcaster mini app, avoid crashing
-      console.error("Farcaster miniapp sdk.ready() failed", err);
-    }
+    const callReady = () => {
+      try {
+        if (sdk && sdk.actions && typeof sdk.actions.ready === 'function') {
+          sdk.actions.ready();
+          console.log('SDK ready called successfully');
+        } else {
+          console.warn('SDK or ready function not available', { 
+            hasSdk: !!sdk, 
+            hasActions: !!(sdk && sdk.actions),
+            hasReady: !!(sdk && sdk.actions && sdk.actions.ready)
+          });
+        }
+      } catch (err) {
+        console.error("Farcaster miniapp sdk.ready() failed", err);
+      }
+    };
+    
+    // Try immediately
+    callReady();
+    // And try again after a short delay in case SDK loads asynchronously
+    const timer = setTimeout(callReady, 100);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
