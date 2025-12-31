@@ -25,14 +25,3 @@ export async function POST(request: Request) {
     return new NextResponse("Invalid JSON", { status: 400 });
   }
 }
-  try {
-    const body = await request.json();
-    if (typeof body.paused !== "boolean") {
-      return new NextResponse("Invalid body", { status: 400 });
-    }
-    paused = body.paused;
-    return NextResponse.json({ paused });
-  } catch {
-    return new NextResponse("Invalid JSON", { status: 400 });
-  }
-}
