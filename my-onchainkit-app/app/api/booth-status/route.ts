@@ -7,6 +7,24 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const secret = process.env.STUDIO_SECRET;
+  const header = request.headers.get("x-studio-secret");
+
+  if (!secret || header !== secret) {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const body = await request.json();
+    if (typeof body.paused !== "boolean") {
+      return new NextResponse("Invalid body", { status: 400 });
+    }
+    paused = body.paused;
+    return NextResponse.json({ paused });
+  } catch {
+    return new NextResponse("Invalid JSON", { status: 400 });
+  }
+}
   try {
     const body = await request.json();
     if (typeof body.paused !== "boolean") {
