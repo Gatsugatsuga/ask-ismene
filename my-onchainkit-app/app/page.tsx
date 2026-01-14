@@ -1,5 +1,7 @@
 "use client";
 
+console.warn("🟣 PAGE.TSX LOADED");
+
 import React, { useEffect, useState, type CSSProperties } from "react";
 
 import {
