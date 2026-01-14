@@ -58,6 +58,13 @@ const erc20Abi: Abi = [
 const boothPricingAbi: Abi = [
   {
     type: "function",
+    name: "getPrice",
+    stateMutability: "view",
+    inputs: [{ name: "format", type: "uint8" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
     name: "PRICE_HAIKU",
     stateMutability: "view",
     inputs: [],
