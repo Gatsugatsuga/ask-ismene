@@ -7,10 +7,9 @@ import React, { useEffect, useState, type CSSProperties } from "react";
 import {
   useAccount,
   useChainId,
-  useReadContract,
   useWriteContract,
   useWaitForTransactionReceipt,
-  useConnect,
+  useConnect
 } from "wagmi";
 
 import type { Abi } from "viem";
@@ -298,47 +297,81 @@ export default function Page() {
 
   const isSubmitting = step === "sending" || isPending;
 
-      // Read prices + USDC address
-  const READ_CHAIN_ID = chainId ?? 8453;
-
+      // Read prices + USDC address (robust in Farcaster iframes)
+  const READ_CHAIN_ID = chainId ?? 8453; // Base mainnet for reads
   const readEnabled = Boolean(CONTRACT_ADDRESS);
 
-  const { data: priceHaiku } = useReadContract({
-    chainId: READ_CHAIN_ID,
-    address: CONTRACT_ADDRESS as `0x${string}`,
-    abi: boothPricingAbi,
-    functionName: "PRICE_HAIKU",
-    query: { enabled: readEnabled },
-  });
+  const [priceHaiku, setPriceHaiku] = useState<bigint | null>(null);
+  const [priceVisual, setPriceVisual] = useState<bigint | null>(null);
+  const [priceOmakase, setPriceOmakase] = useState<bigint | null>(null);
 
-  const { data: priceVisual } = useReadContract({
-    chainId: READ_CHAIN_ID,
-    address: CONTRACT_ADDRESS as `0x${string}`,
-    abi: boothPricingAbi,
-    functionName: "PRICE_VISUAL",
-    query: { enabled: readEnabled },
-  });
-
-  const { data: priceOmakase } = useReadContract({
-    chainId: READ_CHAIN_ID,
-    address: CONTRACT_ADDRESS as `0x${string}`,
-    abi: boothPricingAbi,
-    functionName: "PRICE_OMAKASE",
-    query: { enabled: readEnabled },
-  });
   useEffect(() => {
-    console.log("pricing debug", {
-      CONTRACT_ADDRESS,
-      chainId,
-      READ_CHAIN_ID,
-      USDC_ADDRESS,
-      readEnabled,
-      priceHaiku,
-      priceVisual,
-      priceOmakase,
-    });
-  }, [CONTRACT_ADDRESS, chainId, READ_CHAIN_ID, USDC_ADDRESS, readEnabled, priceHaiku, priceVisual, priceOmakase]);
+    if (!readEnabled) return;
+    let cancelled = false;
 
+    (async () => {
+      try {
+        const client = createPublicClient({
+          chain: base,
+          transport: http("https://mainnet.base.org"),
+        });
+
+        const address = CONTRACT_ADDRESS as `0x${string}`;
+
+        const tryGetPrice = async (format: number) => {
+          try {
+            const v = await client.readContract({
+              address,
+              abi: boothPricingAbi,
+              functionName: "getPrice",
+              args: [format],
+            });
+            return v as bigint;
+          } catch {
+            return null;
+          }
+        };
+
+        const fallback = async (fn: "PRICE_HAIKU" | "PRICE_VISUAL" | "PRICE_OMAKASE") => {
+          const v = await client.readContract({
+            address,
+            abi: boothPricingAbi,
+            functionName: fn,
+          });
+          return v as bigint;
+        };
+
+        const [h, v, o] = await Promise.all([tryGetPrice(0), tryGetPrice(1), tryGetPrice(2)]);
+
+        const finalHaiku = h ?? (await fallback("PRICE_HAIKU"));
+        const finalVisual = v ?? (await fallback("PRICE_VISUAL"));
+        const finalOmakase = o ?? (await fallback("PRICE_OMAKASE"));
+
+        if (cancelled) return;
+
+        setPriceHaiku(finalHaiku);
+        setPriceVisual(finalVisual);
+        setPriceOmakase(finalOmakase);
+
+        console.warn("PRICING_DEBUG", {
+          CONTRACT_ADDRESS: address,
+          chainId,
+          READ_CHAIN_ID,
+          USDC_ADDRESS,
+          readEnabled,
+          priceHaiku: finalHaiku.toString(),
+          priceVisual: finalVisual.toString(),
+          priceOmakase: finalOmakase.toString(),
+        });
+      } catch (e) {
+        console.error("pricing read failed:", e);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [readEnabled, CONTRACT_ADDRESS, chainId, READ_CHAIN_ID]);
 
   function getPriceForFormat(): bigint | null {
     if (!readEnabled) return null;
