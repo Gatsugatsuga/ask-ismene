@@ -24,7 +24,9 @@ const CONTRACT_ADDRESS =
 
 // NEW: USDC address from env (fallback if contract call fails)
 const USDC_ADDRESS =
-  process.env.NEXT_PUBLIC_USDC_ADDRESS || "";
+  process.env.NEXT_PUBLIC_USDC_ADDRESS ||
+  process.env.NEXT_PUBLIC_USDC ||
+  "";
   
 // removed: const IS_PAUSED = false;
 
@@ -295,9 +297,9 @@ export default function Page() {
   const isSubmitting = step === "sending" || isPending;
 
       // Read prices + USDC address
-  const READ_CHAIN_ID = 8453; // Base mainnet
+  const READ_CHAIN_ID = chainId ?? 8453;
 
-  const readEnabled = Boolean(CONTRACT_ADDRESS) && envOk;
+  const readEnabled = Boolean(CONTRACT_ADDRESS);
 
   const { data: priceHaiku } = useReadContract({
     chainId: READ_CHAIN_ID,
@@ -322,6 +324,19 @@ export default function Page() {
     functionName: "PRICE_OMAKASE",
     query: { enabled: readEnabled },
   });
+  useEffect(() => {
+    console.log("pricing debug", {
+      CONTRACT_ADDRESS,
+      chainId,
+      READ_CHAIN_ID,
+      USDC_ADDRESS,
+      readEnabled,
+      priceHaiku,
+      priceVisual,
+      priceOmakase,
+    });
+  }, [CONTRACT_ADDRESS, chainId, READ_CHAIN_ID, USDC_ADDRESS, readEnabled, priceHaiku, priceVisual, priceOmakase]);
+
 
   function getPriceForFormat(): bigint | null {
     if (!readEnabled) return null;
