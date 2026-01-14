@@ -51,6 +51,21 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             `,
           }}
         />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                const hasMiniAppSdk = !!(window.farcaster?.sdk?.actions?.ready);
+                if (hasMiniAppSdk) {
+                  window.farcaster.sdk.actions.ready();
+                  console.log("✅ Farcaster SDK ready (layout override)");
+                }
+              } catch (e) {
+                console.error("Farcaster SDK auto-ready failed", e);
+              }
+            `,
+          }}
+        />
         <RootProvider>{children}</RootProvider>
       </body>
     </html>
