@@ -1,7 +1,5 @@
 "use client";
 
-console.warn("🟣 PAGE.TSX LOADED");
-
 import React, { useEffect, useState, type CSSProperties } from "react";
 
 import {
@@ -12,7 +10,8 @@ import {
   useConnect
 } from "wagmi";
 
-import type { Abi } from "viem";
+import { Abi, createPublicClient, http } from "viem";
+import { base } from "viem/chains";
 import { useProfile } from "@farcaster/auth-kit";
 import { sdk } from "@farcaster/miniapp-sdk";
 
@@ -40,6 +39,12 @@ const formatMap: Record<Format, number> = {
   visual: 1,
   omakase: 2,
 };
+
+// USDC uses 6 decimals on Base
+const DEFAULT_PRICE_HAIKU = 30_000_000n;
+const DEFAULT_PRICE_VISUAL = 60_000_000n;
+const DEFAULT_PRICE_OMAKASE = 80_000_000n;
+
 
 // Minimal ERC-20 ABI (approve only)
 const erc20Abi: Abi = [
@@ -339,20 +344,41 @@ export default function Page() {
           }
         };
 
-        const fallback = async (fn: "PRICE_HAIKU" | "PRICE_VISUAL" | "PRICE_OMAKASE") => {
-          const v = await client.readContract({
-            address,
-            abi: boothPricingAbi,
-            functionName: fn,
-          });
-          return v as bigint;
+        const fallback = async (
+          fn: "PRICE_HAIKU" | "PRICE_VISUAL" | "PRICE_OMAKASE",
+          abiToUse: Abi
+        ): Promise<bigint | null> => {
+          try {
+            const v = await client.readContract({
+              address,
+              abi: abiToUse,
+              functionName: fn,
+            });
+            return v as bigint;
+          } catch {
+            return null;
+          }
         };
 
         const [h, v, o] = await Promise.all([tryGetPrice(0), tryGetPrice(1), tryGetPrice(2)]);
 
-        const finalHaiku = h ?? (await fallback("PRICE_HAIKU"));
-        const finalVisual = v ?? (await fallback("PRICE_VISUAL"));
-        const finalOmakase = o ?? (await fallback("PRICE_OMAKASE"));
+        const finalHaiku =
+          h ??
+          (await fallback("PRICE_HAIKU", boothPricingAbi)) ??
+          (await fallback("PRICE_HAIKU", askIsmeneBoothAbi as unknown as Abi)) ??
+          DEFAULT_PRICE_HAIKU;
+
+        const finalVisual =
+          v ??
+          (await fallback("PRICE_VISUAL", boothPricingAbi)) ??
+          (await fallback("PRICE_VISUAL", askIsmeneBoothAbi as unknown as Abi)) ??
+          DEFAULT_PRICE_VISUAL;
+
+        const finalOmakase =
+          o ??
+          (await fallback("PRICE_OMAKASE", boothPricingAbi)) ??
+          (await fallback("PRICE_OMAKASE", askIsmeneBoothAbi as unknown as Abi)) ??
+          DEFAULT_PRICE_OMAKASE;
 
         if (cancelled) return;
 
@@ -385,11 +411,11 @@ export default function Page() {
 
     switch (format) {
       case "haiku":
-        return typeof priceHaiku === "bigint" ? priceHaiku : null;
+        return typeof priceHaiku === "bigint" ? priceHaiku : DEFAULT_PRICE_HAIKU;
       case "visual":
-        return typeof priceVisual === "bigint" ? priceVisual : null;
+        return typeof priceVisual === "bigint" ? priceVisual : DEFAULT_PRICE_VISUAL;
       case "omakase":
-        return typeof priceOmakase === "bigint" ? priceOmakase : null;
+        return typeof priceOmakase === "bigint" ? priceOmakase : DEFAULT_PRICE_OMAKASE;
       default:
         return null;
     }
