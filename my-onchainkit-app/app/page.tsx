@@ -10,23 +10,27 @@ import {
   useConnect
 } from "wagmi";
 
-import { Abi, createPublicClient, http } from "viem";
+import { Abi, createPublicClient, http, getAddress } from "viem";
+import { getAddress } from "viem";
+
+const USDC_ADDRESS = getAddress(process.env.NEXT_PUBLIC_USDC!.trim());
+const SPENDER_ADDRESS = getAddress(process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!.trim());
 import { base } from "viem/chains";
+import { getAddress } from "viem";
+
+const USDC_ADDRESS = getAddress(process.env.NEXT_PUBLIC_USDC!.trim());
+const SPENDER_ADDRESS = getAddress(process.env.NEXT_PUBLIC_CONTRACT_ADDRESS!.trim());
 import { useProfile } from "@farcaster/auth-kit";
 import { sdk } from "@farcaster/miniapp-sdk";
 
 import { abi as askIsmeneBoothAbi } from "@/lib/abi/askIsmene";
 
-const CONTRACT_ADDRESS =
-  process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
-  process.env.CONTRACT_ADDRESS ||
-  "";
+const CONTRACT_ADDRESS_RAW = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || process.env.CONTRACT_ADDRESS || "").trim();
+const CONTRACT_ADDRESS = CONTRACT_ADDRESS_RAW ? (getAddress(CONTRACT_ADDRESS_RAW) as `0x`) : "";
 
 // NEW: USDC address from env (fallback if contract call fails)
-const USDC_ADDRESS =
-  process.env.NEXT_PUBLIC_USDC_ADDRESS ||
-  process.env.NEXT_PUBLIC_USDC ||
-  "";
+const USDC_ADDRESS_RAW = (process.env.NEXT_PUBLIC_USDC || process.env.NEXT_PUBLIC_USDC_ADDRESS || "").trim();
+const USDC_ADDRESS = USDC_ADDRESS_RAW ? (getAddress(USDC_ADDRESS_RAW) as `0x`) : "";
   
 // removed: const IS_PAUSED = false;
 
