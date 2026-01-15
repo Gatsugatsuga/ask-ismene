@@ -325,7 +325,7 @@ export default function Page() {
       try {
         const client = createPublicClient({
           chain: base,
-          transport: http("https://mainnet.base.org"),
+          transport: http(),
         });
 
         const address = CONTRACT_ADDRESS as `0x${string}`;
