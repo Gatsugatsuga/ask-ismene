@@ -9,29 +9,25 @@ import {
   useWaitForTransactionReceipt,
   useConnect
 } from "wagmi";
+
+import { Abi, createPublicClient, http } from "viem";
 import { base } from "viem/chains";
 import { useProfile } from "@farcaster/auth-kit";
 import { sdk } from "@farcaster/miniapp-sdk";
 
 import { abi as askIsmeneBoothAbi } from "@/lib/abi/askIsmene";
-import { Abi, createPublicClient, http, getAddress } from "viem";
 
-// ---- Addresses (sanitized + checksummed) ----
-const CONTRACT_ADDRESS_RAW = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || process.env.CONTRACT_ADDRESS || "")
-  .replace(/^"|"$/g, "")
-  .replace(/\\n/g, "")
-  .trim();
+const CONTRACT_ADDRESS =
+  process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
+  process.env.CONTRACT_ADDRESS ||
+  "";
 
-const USDC_ADDRESS_RAW = (process.env.NEXT_PUBLIC_USDC || process.env.NEXT_PUBLIC_USDC_ADDRESS || "")
-  .replace(/^"|"$/g, "")
-  .replace(/\\n/g, "")
-  .trim();
-
-const CONTRACT_ADDRESS = CONTRACT_ADDRESS_RAW ? (getAddress(CONTRACT_ADDRESS_RAW) as `0x${string}`) : "";
-const USDC_ADDRESS = USDC_ADDRESS_RAW ? (getAddress(USDC_ADDRESS_RAW) as `0x${string}`) : "";
-
-// approve spender should be the booth contract
-const SPENDER_ADDRESS = CONTRACT_ADDRESS;
+// NEW: USDC address from env (fallback if contract call fails)
+const USDC_ADDRESS =
+  process.env.NEXT_PUBLIC_USDC_ADDRESS ||
+  process.env.NEXT_PUBLIC_USDC ||
+  "";
+  
 // removed: const IS_PAUSED = false;
 
 type Step = "hero" | "format" | "form" | "sending" | "success" | "error";
@@ -48,6 +44,7 @@ const formatMap: Record<Format, number> = {
 const DEFAULT_PRICE_HAIKU = 30_000_000n;
 const DEFAULT_PRICE_VISUAL = 60_000_000n;
 const DEFAULT_PRICE_OMAKASE = 80_000_000n;
+
 
 // Minimal ERC-20 ABI (approve only)
 const erc20Abi: Abi = [
@@ -93,6 +90,7 @@ const boothPricingAbi: Abi = [
     outputs: [{ name: "", type: "uint256" }],
   },
 ];
+
 
 // tiny helper type so we can call sdk.actions.ready() safely
 type MiniAppSdkLike = {
@@ -428,6 +426,9 @@ export default function Page() {
     ? (USDC_ADDRESS as `0x${string}`)
     : undefined;
 
+
+
+
   // Farcaster mini-app: mark content ready if we're inside a mini-app
   useEffect(() => {
     const callReady = () => {
@@ -582,7 +583,7 @@ export default function Page() {
         address: usdcAddress as `0x${string}`,
         abi: erc20Abi,
         functionName: "approve",
-        args: [SPENDER_ADDRESS, price],
+        args: [CONTRACT_ADDRESS as `0x${string}`, price],
       });
 
       if (!approveHash) {

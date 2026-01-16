@@ -1,5 +1,7 @@
 "use client";
 
+console.warn("🟣 PAGE.TSX LOADED");
+
 import React, { useEffect, useState, type CSSProperties } from "react";
 
 import {
@@ -9,29 +11,24 @@ import {
   useWaitForTransactionReceipt,
   useConnect
 } from "wagmi";
-import { base } from "viem/chains";
+
+import type { Abi } from "viem";
 import { useProfile } from "@farcaster/auth-kit";
 import { sdk } from "@farcaster/miniapp-sdk";
 
 import { abi as askIsmeneBoothAbi } from "@/lib/abi/askIsmene";
-import { Abi, createPublicClient, http, getAddress } from "viem";
 
-// ---- Addresses (sanitized + checksummed) ----
-const CONTRACT_ADDRESS_RAW = (process.env.NEXT_PUBLIC_CONTRACT_ADDRESS || process.env.CONTRACT_ADDRESS || "")
-  .replace(/^"|"$/g, "")
-  .replace(/\\n/g, "")
-  .trim();
+const CONTRACT_ADDRESS =
+  process.env.NEXT_PUBLIC_CONTRACT_ADDRESS ||
+  process.env.CONTRACT_ADDRESS ||
+  "";
 
-const USDC_ADDRESS_RAW = (process.env.NEXT_PUBLIC_USDC || process.env.NEXT_PUBLIC_USDC_ADDRESS || "")
-  .replace(/^"|"$/g, "")
-  .replace(/\\n/g, "")
-  .trim();
-
-const CONTRACT_ADDRESS = CONTRACT_ADDRESS_RAW ? (getAddress(CONTRACT_ADDRESS_RAW) as `0x${string}`) : "";
-const USDC_ADDRESS = USDC_ADDRESS_RAW ? (getAddress(USDC_ADDRESS_RAW) as `0x${string}`) : "";
-
-// approve spender should be the booth contract
-const SPENDER_ADDRESS = CONTRACT_ADDRESS;
+// NEW: USDC address from env (fallback if contract call fails)
+const USDC_ADDRESS =
+  process.env.NEXT_PUBLIC_USDC_ADDRESS ||
+  process.env.NEXT_PUBLIC_USDC ||
+  "";
+  
 // removed: const IS_PAUSED = false;
 
 type Step = "hero" | "format" | "form" | "sending" | "success" | "error";
@@ -43,11 +40,6 @@ const formatMap: Record<Format, number> = {
   visual: 1,
   omakase: 2,
 };
-
-// USDC uses 6 decimals on Base
-const DEFAULT_PRICE_HAIKU = 30_000_000n;
-const DEFAULT_PRICE_VISUAL = 60_000_000n;
-const DEFAULT_PRICE_OMAKASE = 80_000_000n;
 
 // Minimal ERC-20 ABI (approve only)
 const erc20Abi: Abi = [
@@ -64,13 +56,6 @@ const erc20Abi: Abi = [
 ];
 
 const boothPricingAbi: Abi = [
-  {
-    type: "function",
-    name: "getPrice",
-    stateMutability: "view",
-    inputs: [{ name: "format", type: "uint8" }],
-    outputs: [{ name: "", type: "uint256" }],
-  },
   {
     type: "function",
     name: "PRICE_HAIKU",
@@ -93,6 +78,7 @@ const boothPricingAbi: Abi = [
     outputs: [{ name: "", type: "uint256" }],
   },
 ];
+
 
 // tiny helper type so we can call sdk.actions.ready() safely
 type MiniAppSdkLike = {
@@ -327,7 +313,7 @@ export default function Page() {
       try {
         const client = createPublicClient({
           chain: base,
-          transport: http(),
+          transport: http("https://mainnet.base.org"),
         });
 
         const address = CONTRACT_ADDRESS as `0x${string}`;
@@ -346,41 +332,20 @@ export default function Page() {
           }
         };
 
-        const fallback = async (
-          fn: "PRICE_HAIKU" | "PRICE_VISUAL" | "PRICE_OMAKASE",
-          abiToUse: Abi
-        ): Promise<bigint | null> => {
-          try {
-            const v = await client.readContract({
-              address,
-              abi: abiToUse,
-              functionName: fn,
-            });
-            return v as bigint;
-          } catch {
-            return null;
-          }
+        const fallback = async (fn: "PRICE_HAIKU" | "PRICE_VISUAL" | "PRICE_OMAKASE") => {
+          const v = await client.readContract({
+            address,
+            abi: boothPricingAbi,
+            functionName: fn,
+          });
+          return v as bigint;
         };
 
         const [h, v, o] = await Promise.all([tryGetPrice(0), tryGetPrice(1), tryGetPrice(2)]);
 
-        const finalHaiku =
-          h ??
-          (await fallback("PRICE_HAIKU", boothPricingAbi)) ??
-          (await fallback("PRICE_HAIKU", askIsmeneBoothAbi as unknown as Abi)) ??
-          DEFAULT_PRICE_HAIKU;
-
-        const finalVisual =
-          v ??
-          (await fallback("PRICE_VISUAL", boothPricingAbi)) ??
-          (await fallback("PRICE_VISUAL", askIsmeneBoothAbi as unknown as Abi)) ??
-          DEFAULT_PRICE_VISUAL;
-
-        const finalOmakase =
-          o ??
-          (await fallback("PRICE_OMAKASE", boothPricingAbi)) ??
-          (await fallback("PRICE_OMAKASE", askIsmeneBoothAbi as unknown as Abi)) ??
-          DEFAULT_PRICE_OMAKASE;
+        const finalHaiku = h ?? (await fallback("PRICE_HAIKU"));
+        const finalVisual = v ?? (await fallback("PRICE_VISUAL"));
+        const finalOmakase = o ?? (await fallback("PRICE_OMAKASE"));
 
         if (cancelled) return;
 
@@ -413,11 +378,11 @@ export default function Page() {
 
     switch (format) {
       case "haiku":
-        return typeof priceHaiku === "bigint" ? priceHaiku : DEFAULT_PRICE_HAIKU;
+        return typeof priceHaiku === "bigint" ? priceHaiku : null;
       case "visual":
-        return typeof priceVisual === "bigint" ? priceVisual : DEFAULT_PRICE_VISUAL;
+        return typeof priceVisual === "bigint" ? priceVisual : null;
       case "omakase":
-        return typeof priceOmakase === "bigint" ? priceOmakase : DEFAULT_PRICE_OMAKASE;
+        return typeof priceOmakase === "bigint" ? priceOmakase : null;
       default:
         return null;
     }
@@ -427,6 +392,9 @@ export default function Page() {
   const usdcAddress = USDC_ADDRESS
     ? (USDC_ADDRESS as `0x${string}`)
     : undefined;
+
+
+
 
   // Farcaster mini-app: mark content ready if we're inside a mini-app
   useEffect(() => {
@@ -582,7 +550,7 @@ export default function Page() {
         address: usdcAddress as `0x${string}`,
         abi: erc20Abi,
         functionName: "approve",
-        args: [SPENDER_ADDRESS, price],
+        args: [CONTRACT_ADDRESS as `0x${string}`, price],
       });
 
       if (!approveHash) {
